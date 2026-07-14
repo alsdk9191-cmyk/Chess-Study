@@ -1043,11 +1043,6 @@ function renderMobileCommentary(){
   const index = commentaryIndex[playerColor];
   mobileCommentaryEl.replaceChildren();
 
-  const label = document.createElement('div');
-  label.className = 'mobile-commentary-label';
-  label.textContent = '내 수 해설';
-  mobileCommentaryEl.appendChild(label);
-
   if (!history.length || index < 0){
     const empty = document.createElement('div');
     empty.className = 'mobile-commentary-empty';
