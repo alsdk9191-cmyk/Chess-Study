@@ -66,12 +66,14 @@ export default {
       evaluation: shortText(payload.evaluation),
       stockfishReason,
       expected: shortText(payload.expected),
-      alternative: shortText(payload.alternative)
+      alternative: shortText(payload.alternative),
+      coachStyle: shortText(payload.coachStyle)
     };
     const prompt = [
       '당신은 한국어 체스 코치입니다.',
       'Stockfish가 제공한 사실만 사용하고, 없는 전술이나 기물 손실을 추측하지 마세요.',
       '평가 라벨을 바꾸지 말고 기보 표기를 제목처럼 반복하지 마세요.',
+      context.coachStyle || '직설적이되 예의 있는 체스 코치 말투를 쓰세요.',
       '초급자가 바로 이해할 수 있는 짧은 문장만 작성하세요.',
       '반드시 JSON만 반환하세요: {"body":["핵심 이유", "짧은 학습 포인트"]}.',
       'body는 1~2문장이고 각 문장은 80자 이하여야 합니다.',

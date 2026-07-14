@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="ai-coach-config.js"></script>
 <link rel="stylesheet" href="chess.css">
 </head>
 <body>
@@ -112,6 +113,7 @@
             <input type="checkbox" id="geminiEnabled">
             <span>Gemini 사용</span>
           </label>
+          <select id="geminiCoachStyle" aria-label="AI 코치 말투"></select>
           <input id="geminiEndpoint" type="url" inputmode="url" placeholder="Cloudflare Worker URL">
         </div>
 
@@ -222,6 +224,7 @@ const pieceThemeEl = document.getElementById('pieceTheme');
 const boardThemeEl = document.getElementById('boardTheme');
 const backgroundThemeEl = document.getElementById('backgroundTheme');
 const geminiEnabledEl = document.getElementById('geminiEnabled');
+const geminiCoachStyleEl = document.getElementById('geminiCoachStyle');
 const geminiEndpointEl = document.getElementById('geminiEndpoint');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
 const reviewNextBtn = document.getElementById('reviewNextBtn');
@@ -327,6 +330,9 @@ let currentBoardTheme = 'wood';
 let currentBackgroundTheme = 'white';
 let geminiEnabled = false;
 let geminiEndpoint = '';
+const AI_COACH_STYLES = window.AI_COACH_STYLES || {};
+const DEFAULT_AI_COACH_STYLE = window.DEFAULT_AI_COACH_STYLE || 'sassy';
+let geminiCoachStyle = DEFAULT_AI_COACH_STYLE;
 const BOARD_THEME_IDS = new Set(['wood','chesscom','monochrome','watermelon','strawberry','neon','chocolate','notebook','baduk']);
 const BACKGROUND_THEME_IDS = new Set(['white','darkwood','pastel','neon']);
 const SETTINGS_STORAGE_KEY = 'chess-study-settings-v1';
@@ -339,7 +345,8 @@ function saveUserSettings(){
       boardTheme: currentBoardTheme,
       backgroundTheme: currentBackgroundTheme,
       geminiEnabled,
-      geminiEndpoint
+      geminiEndpoint,
+      geminiCoachStyle
     }));
   } catch {
     // Some browser privacy modes disable local storage; the game still works normally.
@@ -358,6 +365,7 @@ function restoreUserSettings(){
     if (BACKGROUND_THEME_IDS.has(saved.backgroundTheme)) currentBackgroundTheme = saved.backgroundTheme;
     if (typeof saved.geminiEnabled === 'boolean') geminiEnabled = saved.geminiEnabled;
     if (typeof saved.geminiEndpoint === 'string') geminiEndpoint = saved.geminiEndpoint.trim();
+    if (typeof saved.geminiCoachStyle === 'string' && saved.geminiCoachStyle in AI_COACH_STYLES) geminiCoachStyle = saved.geminiCoachStyle;
   } catch {
     // Ignore invalid or old saved settings and keep the defaults.
   }
@@ -366,6 +374,10 @@ function restoreUserSettings(){
   boardThemeEl.value = currentBoardTheme;
   backgroundThemeEl.value = currentBackgroundTheme;
   geminiEnabledEl.checked = geminiEnabled;
+  geminiCoachStyleEl.innerHTML = Object.entries(AI_COACH_STYLES)
+    .map(([id, style]) => `<option value="${id}">${style.label}</option>`)
+    .join('');
+  geminiCoachStyleEl.value = geminiCoachStyle;
   geminiEndpointEl.value = geminiEndpoint;
   document.documentElement.dataset.boardTheme = currentBoardTheme === 'wood' ? '' : currentBoardTheme;
   document.documentElement.dataset.backgroundTheme = currentBackgroundTheme === 'white' ? '' : currentBackgroundTheme;
@@ -1191,6 +1203,7 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
 
   const entry = commentaryHistory[color][index];
   if (!entry) return;
+  const coachStyle = AI_COACH_STYLES[geminiCoachStyle]?.instruction || AI_COACH_STYLES[DEFAULT_AI_COACH_STYLE]?.instruction || '';
 
   try {
     const response = await fetch(endpoint, {
@@ -1203,7 +1216,8 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
         classification: content.title,
         stockfishReason: content.body || [],
         expected: content.expected || '',
-        alternative: content.alternative || ''
+        alternative: content.alternative || '',
+        coachStyle
       })
     });
     if (!response.ok) return;
@@ -1770,6 +1784,12 @@ backgroundThemeEl.addEventListener('change', (e) => {
 
 geminiEnabledEl.addEventListener('change', (e) => {
   geminiEnabled = e.target.checked;
+  saveUserSettings();
+});
+
+geminiCoachStyleEl.addEventListener('change', (e) => {
+  geminiCoachStyle = e.target.value in AI_COACH_STYLES ? e.target.value : DEFAULT_AI_COACH_STYLE;
+  e.target.value = geminiCoachStyle;
   saveUserSettings();
 });
 
