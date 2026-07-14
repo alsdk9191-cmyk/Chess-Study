@@ -430,6 +430,11 @@
     padding-top:12px;
     border-top:1px solid var(--soft-line);
   }
+  .hint-toggles{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+  }
   .hint-toggle{
     display:flex;
     align-items:center;

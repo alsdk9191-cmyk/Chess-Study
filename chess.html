@@ -129,11 +129,17 @@
     </div>
 
     <div class="hint-box">
-      <label class="hint-toggle">
-        <input type="checkbox" id="hintToggle">
-        <span>다음 수 힌트 보기</span>
-      </label>
-      <div id="hintText">체크하면 현재 차례의 추천 수 힌트가 여기에 표시됩니다.</div>
+      <div class="hint-toggles">
+        <label class="hint-toggle">
+          <input type="checkbox" id="hintToggle">
+          <span>내 힌트</span>
+        </label>
+        <label class="hint-toggle">
+          <input type="checkbox" id="opponentHintToggle">
+          <span>상대 힌트</span>
+        </label>
+      </div>
+      <div id="hintText">내 힌트 또는 상대 힌트를 켜면 추천 수가 표시됩니다.</div>
     </div>
 
     <div class="commentary-box">
@@ -194,6 +200,7 @@ const statusEl = document.getElementById('status');
 const statusText = document.getElementById('statusText');
 const movelistEl = document.getElementById('movelist');
 const hintToggleEl = document.getElementById('hintToggle');
+const opponentHintToggleEl = document.getElementById('opponentHintToggle');
 const hintTextEl = document.getElementById('hintText');
 const capturedTopEl = document.getElementById('capturedTop');
 const capturedBottomEl = document.getElementById('capturedBottom');
@@ -594,7 +601,7 @@ function formatEvalForText(evalInfo){
 }
 
 function getHintMove(){
-  if (!hintToggleEl.checked || !stableHintAnalysis.lines.length) return null;
+  if (!shouldShowHint() || !stableHintAnalysis.lines.length) return null;
   const best = stableHintAnalysis.lines[0];
   if (!best || !best.uci || best.uci.length < 4) return null;
   const from = best.uci.slice(0,2);
@@ -603,15 +610,28 @@ function getHintMove(){
   return movingPiece ? {from, to, pieceKey: movingPiece.color + movingPiece.type} : null;
 }
 
+function shouldShowHint(){
+  const isMyTurn = game.turn() === playerColor;
+  return isMyTurn ? hintToggleEl.checked : opponentHintToggleEl.checked;
+}
+
 function updateHintDisplay(){
-  if (!hintToggleEl.checked){
-    hintTextEl.textContent = '체크하면 현재 차례의 추천 수 힌트가 여기에 표시됩니다.';
+  if (!hintToggleEl.checked && !opponentHintToggleEl.checked){
+    hintTextEl.textContent = '내 힌트 또는 상대 힌트를 켜면 추천 수가 표시됩니다.';
     render();
     return;
   }
 
   if (isReviewing()){
     hintTextEl.textContent = '리뷰 중에는 현재 국면 힌트를 숨깁니다.';
+    render();
+    return;
+  }
+
+  if (!shouldShowHint()){
+    hintTextEl.textContent = game.turn() === playerColor
+      ? '내 차례입니다. 내 힌트를 켜면 추천 수를 볼 수 있습니다.'
+      : '상대 차례입니다. 상대 힌트를 켜면 추천 수를 볼 수 있습니다.';
     render();
     return;
   }
@@ -1685,6 +1705,7 @@ backgroundThemeEl.addEventListener('change', (e) => {
 });
 
 hintToggleEl.addEventListener('change', updateHintDisplay);
+opponentHintToggleEl.addEventListener('change', updateHintDisplay);
 reviewPrevBtn.addEventListener('click', () => setReviewPly(getDisplayPly() - 1));
 reviewNextBtn.addEventListener('click', () => setReviewPly(getDisplayPly() + 1));
 
