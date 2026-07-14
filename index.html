@@ -1227,7 +1227,14 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
       })
     });
     if (!response.ok){
-      setGeminiConnectionStatus(`Gemini 연결 실패 (${response.status})`, 'error');
+      let detail = '';
+      try {
+        const error = await response.json();
+        detail = String(error?.error || '').trim().slice(0, 100);
+      } catch {
+        // The status code still identifies a Worker-level failure.
+      }
+      setGeminiConnectionStatus(detail || `Gemini 연결 실패 (${response.status})`, 'error');
       return;
     }
 

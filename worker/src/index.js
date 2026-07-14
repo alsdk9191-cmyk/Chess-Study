@@ -99,7 +99,16 @@ export default {
       return json({error:'Gemini 연결에 실패했습니다.'}, 502, cors);
     }
 
-    if (!geminiResponse.ok) return json({error:'Gemini 해설을 만들지 못했습니다.'}, 502, cors);
+    if (!geminiResponse.ok) {
+      let detail = '';
+      try {
+        const errorData = await geminiResponse.json();
+        detail = shortText(errorData?.error?.message);
+      } catch {
+        // Preserve a useful generic message when Gemini returns a non-JSON error.
+      }
+      return json({error: detail || 'Gemini 해설을 만들지 못했습니다.'}, 502, cors);
+    }
     const geminiData = await geminiResponse.json();
     const text = geminiData.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || '')
