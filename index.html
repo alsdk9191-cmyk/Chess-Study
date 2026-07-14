@@ -114,7 +114,7 @@
             <span>Gemini 사용</span>
           </label>
           <select id="geminiCoachStyle" aria-label="AI 코치 말투"></select>
-          <input id="geminiEndpoint" type="url" inputmode="url" placeholder="Cloudflare Worker URL">
+          <div class="ai-connection-status" id="geminiConnectionStatus" aria-live="polite"></div>
         </div>
 
         <div class="field" style="margin-bottom:0;">
@@ -225,7 +225,7 @@ const boardThemeEl = document.getElementById('boardTheme');
 const backgroundThemeEl = document.getElementById('backgroundTheme');
 const geminiEnabledEl = document.getElementById('geminiEnabled');
 const geminiCoachStyleEl = document.getElementById('geminiCoachStyle');
-const geminiEndpointEl = document.getElementById('geminiEndpoint');
+const geminiConnectionStatusEl = document.getElementById('geminiConnectionStatus');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
 const reviewNextBtn = document.getElementById('reviewNextBtn');
 const reviewStatusEl = document.getElementById('reviewStatus');
@@ -328,8 +328,9 @@ const PIECE_THEMES = {
 let currentPieceTheme = 'wikimedia';
 let currentBoardTheme = 'wood';
 let currentBackgroundTheme = 'white';
-let geminiEnabled = false;
-let geminiEndpoint = '';
+const GEMINI_WORKER_URL = window.GEMINI_WORKER_URL || '';
+const DEFAULT_AI_COACH_ENABLED = window.DEFAULT_AI_COACH_ENABLED !== false;
+let geminiEnabled = DEFAULT_AI_COACH_ENABLED;
 const AI_COACH_STYLES = window.AI_COACH_STYLES || {};
 const DEFAULT_AI_COACH_STYLE = window.DEFAULT_AI_COACH_STYLE || 'sassy';
 let geminiCoachStyle = DEFAULT_AI_COACH_STYLE;
@@ -345,7 +346,7 @@ function saveUserSettings(){
       boardTheme: currentBoardTheme,
       backgroundTheme: currentBackgroundTheme,
       geminiEnabled,
-      geminiEndpoint,
+      geminiConfigured: true,
       geminiCoachStyle
     }));
   } catch {
@@ -363,8 +364,7 @@ function restoreUserSettings(){
     if (saved.pieceTheme in PIECE_THEMES) currentPieceTheme = saved.pieceTheme;
     if (BOARD_THEME_IDS.has(saved.boardTheme)) currentBoardTheme = saved.boardTheme;
     if (BACKGROUND_THEME_IDS.has(saved.backgroundTheme)) currentBackgroundTheme = saved.backgroundTheme;
-    if (typeof saved.geminiEnabled === 'boolean') geminiEnabled = saved.geminiEnabled;
-    if (typeof saved.geminiEndpoint === 'string') geminiEndpoint = saved.geminiEndpoint.trim();
+    if (saved.geminiConfigured === true && typeof saved.geminiEnabled === 'boolean') geminiEnabled = saved.geminiEnabled;
     if (typeof saved.geminiCoachStyle === 'string' && saved.geminiCoachStyle in AI_COACH_STYLES) geminiCoachStyle = saved.geminiCoachStyle;
   } catch {
     // Ignore invalid or old saved settings and keep the defaults.
@@ -378,7 +378,7 @@ function restoreUserSettings(){
     .map(([id, style]) => `<option value="${id}">${style.label}</option>`)
     .join('');
   geminiCoachStyleEl.value = geminiCoachStyle;
-  geminiEndpointEl.value = geminiEndpoint;
+  setGeminiConnectionStatus(GEMINI_WORKER_URL ? 'Gemini 자동 연결' : 'Worker 주소가 설정되지 않았습니다.');
   document.documentElement.dataset.boardTheme = currentBoardTheme === 'wood' ? '' : currentBoardTheme;
   document.documentElement.dataset.backgroundTheme = currentBackgroundTheme === 'white' ? '' : currentBackgroundTheme;
   syncDifficultyUi();
@@ -1190,11 +1190,16 @@ function setCommentaryMessageForColor(color, text){
 
 function getGeminiEndpoint(){
   try {
-    const url = new URL(geminiEndpoint);
+    const url = new URL(GEMINI_WORKER_URL);
     return url.protocol === 'https:' ? url.toString() : '';
   } catch {
     return '';
   }
+}
+
+function setGeminiConnectionStatus(message, state = ''){
+  geminiConnectionStatusEl.textContent = message;
+  geminiConnectionStatusEl.dataset.state = state;
 }
 
 async function requestGeminiCommentary(color, index, move, nextEval, content){
@@ -1220,7 +1225,10 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
         coachStyle
       })
     });
-    if (!response.ok) return;
+    if (!response.ok){
+      setGeminiConnectionStatus(`Gemini 연결 실패 (${response.status})`, 'error');
+      return;
+    }
 
     const result = await response.json();
     if (!Array.isArray(result.body) || !result.body.length) return;
@@ -1231,9 +1239,11 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
       ...content,
       body: result.body.slice(0, 2).map((line) => String(line).trim()).filter(Boolean)
     };
+    setGeminiConnectionStatus('Gemini 연결됨', 'success');
     renderCommentaryPanel(color);
   } catch {
     // Keep the Stockfish explanation when the optional AI service is unavailable.
+    setGeminiConnectionStatus('Gemini 연결 실패: Worker 설정을 확인하세요.', 'error');
   }
 }
 
@@ -1793,11 +1803,6 @@ geminiCoachStyleEl.addEventListener('change', (e) => {
   saveUserSettings();
 });
 
-geminiEndpointEl.addEventListener('change', (e) => {
-  geminiEndpoint = e.target.value.trim();
-  e.target.value = geminiEndpoint;
-  saveUserSettings();
-});
 
 hintToggleEl.addEventListener('change', updateHintDisplay);
 opponentHintToggleEl.addEventListener('change', updateHintDisplay);

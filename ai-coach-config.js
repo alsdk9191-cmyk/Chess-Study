@@ -1,4 +1,7 @@
 // AI commentary styles live here so tone changes do not require editing the game logic.
+window.GEMINI_WORKER_URL = 'https://floral-mouse-f1ca.outofwell.workers.dev';
+window.DEFAULT_AI_COACH_ENABLED = true;
+
 window.AI_COACH_STYLES = {
   sassy: {
     label: '까칠한 코치',

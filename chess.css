@@ -402,7 +402,16 @@
     text-transform:none;
     cursor:pointer;
   }
-  .ai-toggle input{accent-color:var(--brass);}
+.ai-toggle input{accent-color:var(--brass);}
+.ai-connection-status{
+  min-height:16px;
+  margin-top:6px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.35;
+}
+.ai-connection-status[data-state="success"]{color:#2f7d4b;}
+.ai-connection-status[data-state="error"]{color:#b24935;}
   .side-toggle{display:flex;gap:8px;}
   .side-toggle button{
     flex:1;
