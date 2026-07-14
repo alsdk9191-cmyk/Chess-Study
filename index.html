@@ -617,21 +617,21 @@ function shouldShowHint(){
 
 function updateHintDisplay(){
   if (!hintToggleEl.checked && !opponentHintToggleEl.checked){
-    hintTextEl.textContent = '내 힌트 또는 상대 힌트를 켜면 추천 수가 표시됩니다.';
+    hintTextEl.textContent = '힌트를 켜면 추천 수가 표시됩니다.';
     render();
     return;
   }
 
   if (isReviewing()){
-    hintTextEl.textContent = '리뷰 중에는 현재 국면 힌트를 숨깁니다.';
+    hintTextEl.textContent = '리뷰 중에는 힌트를 숨깁니다.';
     render();
     return;
   }
 
   if (!shouldShowHint()){
     hintTextEl.textContent = game.turn() === playerColor
-      ? '내 차례입니다. 내 힌트를 켜면 추천 수를 볼 수 있습니다.'
-      : '상대 차례입니다. 상대 힌트를 켜면 추천 수를 볼 수 있습니다.';
+      ? '내 차례: 내 힌트를 켜세요.'
+      : '상대 차례: 상대 힌트를 켜세요.';
     render();
     return;
   }
@@ -648,8 +648,8 @@ function updateHintDisplay(){
   const evalText = formatEvalForText({type: best.type, scoreW: best.scoreW});
   const altText = [alt1?.san, alt2?.san].filter(Boolean).join(', ');
   hintTextEl.textContent = altText
-    ? `추천 수는 ${best.san} 입니다. 현재 평가는 ${evalText} 정도이고, 다른 후보로는 ${altText}가 보입니다.`
-    : `추천 수는 ${best.san} 입니다. 현재 평가는 ${evalText} 정도입니다.`;
+    ? `추천: ${best.san} · 평가 ${evalText} · 후보 ${altText}`
+    : `추천: ${best.san} · 평가 ${evalText}`;
   render();
 }
 
@@ -680,8 +680,8 @@ function isPrincipledOpeningMove(move, prevFen){
 
 function describeEvalSwing(delta){
   const pawns = Math.abs(cpToPawns(delta)).toFixed(2);
-  if (delta >= 0) return `평가를 ${pawns}폰 정도 끌어올렸습니다.`;
-  return `평가를 ${pawns}폰 정도 잃었습니다.`;
+  if (delta >= 0) return `평가 +${pawns}폰`;
+  return `평가 -${pawns}폰`;
 }
 
 function getMaterialBalance(position, perspective){
@@ -857,77 +857,77 @@ function analyzeImmediateForkThreat(fen, defenderColor){
 function getMoveFeatureText(move, predictedThreat){
   if (predictedThreat && predictedThreat.isFork){
     const targets = predictedThreat.targets.map((target) => `${target.square}의 ${target.pieceName}`).join('와 ');
-    return `${predictedThreat.replySan}로 ${targets}을 동시에 공격하는 포크가 가능합니다.`;
+    return `${predictedThreat.replySan}로 ${targets} 포크가 가능합니다.`;
   }
-  if (predictedThreat) return `${predictedThreat.replySan}로 ${predictedThreat.square}의 ${predictedThreat.pieceName}이 직접 공격받을 수 있습니다.`;
-  if (move.san.includes('#')) return '바로 끝내기를 만들어 낸 결정적인 수였습니다.';
-  if (move.flags.includes('p')) return '프로모션으로 전력을 크게 키우면서 판을 주도한 수입니다.';
-  if (move.flags.includes('k') || move.flags.includes('q')) return '캐슬링으로 킹 안전과 룩 연결을 한 번에 해결했습니다.';
+  if (predictedThreat) return `${predictedThreat.replySan}로 ${predictedThreat.square}의 ${predictedThreat.pieceName}이 공격받습니다.`;
+  if (move.san.includes('#')) return '메이트를 만들었습니다.';
+  if (move.flags.includes('p')) return '프로모션으로 전력이 늘었습니다.';
+  if (move.flags.includes('k') || move.flags.includes('q')) return '캐슬링으로 킹을 안전하게 했습니다.';
   if (move.captured){
     const gain = PIECE_VALUES[move.captured] || 0;
     return gain >= 5
-      ? '큰 기물을 챙겨서 형세의 무게추를 확실히 기울였습니다.'
-      : '기물을 챙기며 주도권을 잡을 발판을 마련했습니다.';
+      ? '큰 기물을 얻었습니다.'
+      : '기물을 얻었습니다.';
   }
-  if (move.san.includes('+')) return '체크를 걸어 상대의 선택지를 강하게 제한했습니다.';
-  if (['d4','e4','d5','e5'].includes(move.to)) return '중앙을 잡으면서 다음 전개까지 자연스럽게 이어지는 수였습니다.';
-  if ((move.piece === 'n' || move.piece === 'b') && ['1','8'].includes(move.from[1])) return '가벼운 기물을 전개해 말의 활동 범위를 넓혔습니다.';
-  return 'depth 12의 주 수순에서는 즉시 발생하는 큰 전술적 변화가 확인되지 않았습니다.';
+  if (move.san.includes('+')) return '체크로 선택지를 줄였습니다.';
+  if (['d4','e4','d5','e5'].includes(move.to)) return '중앙을 장악했습니다.';
+  if ((move.piece === 'n' || move.piece === 'b') && ['1','8'].includes(move.from[1])) return '기물을 전개했습니다.';
+  return '큰 전술 변화는 없습니다.';
 }
 
 function getLearningPoint(move, consequence){
-  if (consequence && consequence.endsInMate) return '상대의 모든 체크 후보를 먼저 확인한 뒤 수를 선택하세요.';
-  if (consequence && consequence.materialLoss >= 3) return '수를 두기 전에 상대의 체크, 잡기, 직접 공격을 순서대로 확인하세요.';
-  if (move.piece === 'p') return '폰은 되돌아갈 수 없으므로 전진 뒤 약해지는 칸과 기물의 방어 관계를 함께 확인하세요.';
-  if (move.piece === 'n' || move.piece === 'b') return '전개 자체보다, 이동 뒤 남는 기물 중 방어되지 않는 말이 없는지가 우선입니다.';
-  if (move.piece === 'q' || move.piece === 'r') return '무거운 기물을 움직일 때는 상대의 템포 공격과 열린 선을 함께 확인하세요.';
-  if (move.piece === 'k') return '킹을 움직인 뒤 들어오는 체크와 탈출 칸을 먼저 점검하세요.';
+  if (consequence && consequence.endsInMate) return '상대 체크를 먼저 확인하세요.';
+  if (consequence && consequence.materialLoss >= 3) return '체크, 잡기, 공격 순으로 보세요.';
+  if (move.piece === 'p') return '폰 전진 뒤 약점을 확인하세요.';
+  if (move.piece === 'n' || move.piece === 'b') return '이동 뒤 기물 방어를 확인하세요.';
+  if (move.piece === 'q' || move.piece === 'r') return '상대 템포 공격을 확인하세요.';
+  if (move.piece === 'k') return '체크와 탈출 칸을 확인하세요.';
   return '';
 }
 
 function getMoveAdviceText(move, delta, nextEval, analysisSnapshot, prevFen, consequence, predictedThreat){
   if (nextEval && nextEval.type === 'mate'){
     return nextEval.scoreW > 0
-      ? '이 흐름이면 백 쪽 공격이 거의 멈추지 않습니다.'
-      : '이 흐름이면 흑 쪽 공격이 거의 멈추지 않습니다.';
+      ? '백의 공격이 결정적입니다.'
+      : '흑의 공격이 결정적입니다.';
   }
 
   const alternatives = getAlternativeMoveText(analysisSnapshot, prevFen, move);
   if (predictedThreat && predictedThreat.isFork){
     const targets = predictedThreat.targets.map((target) => `${target.square}의 ${target.pieceName}`).join('와 ');
-    return `${predictedThreat.replySan}로 ${targets}을 동시에 공격하는 포크가 가능합니다. 이 위협을 막거나 둘 중 하나를 잃는 수순을 먼저 계산해야 합니다.`;
+    return `${predictedThreat.replySan}로 ${targets} 포크가 있습니다. 막아야 합니다.`;
   }
   if (predictedThreat && predictedThreat.value >= 3){
-    return `${predictedThreat.replySan}가 예상되며 ${predictedThreat.square}의 ${predictedThreat.pieceName}이 공격받습니다. 다음 수에 처리해야 하므로 이 수는 기물의 활동을 제한합니다.`;
+    return `${predictedThreat.replySan} 뒤 ${predictedThreat.square}의 ${predictedThreat.pieceName}이 공격받습니다.`;
   }
   if (consequence && consequence.endsInMate && delta < 0){
-    return '상대에게 강제 메이트 수순을 허용했습니다.';
+    return '강제 메이트를 허용했습니다.';
   }
   if (consequence && consequence.materialLoss >= 3 && delta <= -35){
     const direct = consequence.firstReplyLoss >= 3 && consequence.firstReplySan
       ? `상대의 ${consequence.firstReplySan} 이후`
       : '엔진의 예상 수순대로 진행하면';
-    return `${direct} 기물 가치가 약 ${consequence.materialLoss}점 줄어드는 손해가 남습니다.`;
+    return `${direct} 기물 약 ${consequence.materialLoss}점 손해입니다.`;
   }
   if (delta <= -220){
     return alternatives
-      ? `${alternatives} 쪽이 훨씬 단단했고, 지금 수는 전술 반격이나 체크를 허용할 가능성이 큽니다.`
-      : '상대의 전술 반격이나 체크 수순을 놓치면서 판이 크게 흔들린 장면입니다.';
+      ? `${alternatives}가 훨씬 안전했습니다.`
+      : '상대 전술을 허용했습니다.';
   }
   if (delta <= -95){
     return alternatives
-      ? `${alternatives} 같은 수로 더 안정적으로 둘 수 있었고, 지금 수는 불필요하게 형세를 흔들었습니다.`
-      : '조금만 더 안전한 선택을 했으면 유리나 균형을 더 잘 지킬 수 있었습니다.';
+      ? `${alternatives}가 더 안전했습니다.`
+      : '더 안전한 수가 있었습니다.';
   }
   if (delta <= -35){
     return alternatives
-      ? `${alternatives} 쪽이 조금 더 정확해 보입니다.`
-      : '나쁘진 않지만 조금 더 매끄러운 수가 있었던 장면입니다.';
+      ? `${alternatives}가 더 정확했습니다.`
+      : '조금 더 정확한 수가 있었습니다.';
   }
-  if (move.captured) return '이득을 굳히려면 교환 뒤에 남는 약점과 역습 체크만 차분히 확인하면 됩니다.';
-  if (move.flags.includes('k') || move.flags.includes('q')) return '이제는 중앙과 열린 파일을 활용해 다음 계획을 세우기 좋은 흐름입니다.';
-  if (move.san.includes('+')) return '체크 이후 상대 킹의 위치가 어떻게 바뀌는지 보고 공격을 이어가면 좋습니다.';
-  if (alternatives && delta >= 70) return `엔진도 ${alternatives} 계열을 높게 봤고, 실제 수순도 그 방향과 잘 맞아떨어졌습니다.`;
+  if (move.captured) return '교환 뒤 약점과 체크를 보세요.';
+  if (move.flags.includes('k') || move.flags.includes('q')) return '중앙과 열린 파일을 활용하세요.';
+  if (move.san.includes('+')) return '킹의 탈출 칸을 보세요.';
+  if (alternatives && delta >= 70) return `${alternatives}와 같은 좋은 방향입니다.`;
   return '';
 }
 
@@ -947,7 +947,7 @@ function getAlternativeMoveText(analysisSnapshot, prevFen, move){
 function buildMoveCommentary(move, prevEval, nextEval, analysisSnapshot, prevFen, replySnapshot){
   if (!move) return '해설을 준비 중입니다.';
   if (!nextEval){
-    return `${move.san}: 엔진 평가를 기다리는 중입니다.`;
+    return '분석 중…';
   }
 
   const prevScoreW = prevEval ? prevEval.scoreW : 0;
@@ -977,7 +977,7 @@ function buildMoveCommentary(move, prevEval, nextEval, analysisSnapshot, prevFen
   const alternatives = getAlternativeMoveText(analysisSnapshot, prevFen, move);
   const learningPoint = getLearningPoint(move, deltaForMover <= -35 ? consequence : null);
   return {
-    title: `${move.san}: ${summary.label}`,
+    title: summary.label,
     body: [
       advice || feature,
       learningPoint && deltaForMover < 15 ? learningPoint : ''
