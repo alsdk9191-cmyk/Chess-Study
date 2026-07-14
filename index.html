@@ -328,7 +328,8 @@ const PIECE_THEMES = {
 let currentPieceTheme = 'wikimedia';
 let currentBoardTheme = 'wood';
 let currentBackgroundTheme = 'white';
-const GEMINI_WORKER_URL = window.GEMINI_WORKER_URL || '';
+// Keep a fallback here so AI commentary still works if the optional config file is cached or unavailable.
+const GEMINI_WORKER_URL = window.GEMINI_WORKER_URL || 'https://floral-mouse-f1ca.outofwell.workers.dev';
 const DEFAULT_AI_COACH_ENABLED = window.DEFAULT_AI_COACH_ENABLED !== false;
 let geminiEnabled = DEFAULT_AI_COACH_ENABLED;
 const AI_COACH_STYLES = window.AI_COACH_STYLES || {};
