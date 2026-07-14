@@ -106,6 +106,15 @@
           </select>
         </div>
 
+        <div class="field">
+          <label>AI 해설</label>
+          <label class="ai-toggle">
+            <input type="checkbox" id="geminiEnabled">
+            <span>Gemini 사용</span>
+          </label>
+          <input id="geminiEndpoint" type="url" inputmode="url" placeholder="Cloudflare Worker URL">
+        </div>
+
         <div class="field" style="margin-bottom:0;">
           <label>내 진영</label>
           <div class="side-toggle">
@@ -212,6 +221,8 @@ const difficultyValueEl = document.getElementById('difficultyValue');
 const pieceThemeEl = document.getElementById('pieceTheme');
 const boardThemeEl = document.getElementById('boardTheme');
 const backgroundThemeEl = document.getElementById('backgroundTheme');
+const geminiEnabledEl = document.getElementById('geminiEnabled');
+const geminiEndpointEl = document.getElementById('geminiEndpoint');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
 const reviewNextBtn = document.getElementById('reviewNextBtn');
 const reviewStatusEl = document.getElementById('reviewStatus');
@@ -314,6 +325,8 @@ const PIECE_THEMES = {
 let currentPieceTheme = 'wikimedia';
 let currentBoardTheme = 'wood';
 let currentBackgroundTheme = 'white';
+let geminiEnabled = false;
+let geminiEndpoint = '';
 const BOARD_THEME_IDS = new Set(['wood','chesscom','monochrome','watermelon','strawberry','neon','chocolate','notebook','baduk']);
 const BACKGROUND_THEME_IDS = new Set(['white','darkwood','pastel','neon']);
 const SETTINGS_STORAGE_KEY = 'chess-study-settings-v1';
@@ -324,7 +337,9 @@ function saveUserSettings(){
       skill: currentSkill,
       pieceTheme: currentPieceTheme,
       boardTheme: currentBoardTheme,
-      backgroundTheme: currentBackgroundTheme
+      backgroundTheme: currentBackgroundTheme,
+      geminiEnabled,
+      geminiEndpoint
     }));
   } catch {
     // Some browser privacy modes disable local storage; the game still works normally.
@@ -341,6 +356,8 @@ function restoreUserSettings(){
     if (saved.pieceTheme in PIECE_THEMES) currentPieceTheme = saved.pieceTheme;
     if (BOARD_THEME_IDS.has(saved.boardTheme)) currentBoardTheme = saved.boardTheme;
     if (BACKGROUND_THEME_IDS.has(saved.backgroundTheme)) currentBackgroundTheme = saved.backgroundTheme;
+    if (typeof saved.geminiEnabled === 'boolean') geminiEnabled = saved.geminiEnabled;
+    if (typeof saved.geminiEndpoint === 'string') geminiEndpoint = saved.geminiEndpoint.trim();
   } catch {
     // Ignore invalid or old saved settings and keep the defaults.
   }
@@ -348,6 +365,8 @@ function restoreUserSettings(){
   pieceThemeEl.value = currentPieceTheme;
   boardThemeEl.value = currentBoardTheme;
   backgroundThemeEl.value = currentBackgroundTheme;
+  geminiEnabledEl.checked = geminiEnabled;
+  geminiEndpointEl.value = geminiEndpoint;
   document.documentElement.dataset.boardTheme = currentBoardTheme === 'wood' ? '' : currentBoardTheme;
   document.documentElement.dataset.backgroundTheme = currentBackgroundTheme === 'white' ? '' : currentBackgroundTheme;
   syncDifficultyUi();
@@ -1157,14 +1176,61 @@ function setCommentaryMessageForColor(color, text){
   renderCommentaryPanel(color);
 }
 
+function getGeminiEndpoint(){
+  try {
+    const url = new URL(geminiEndpoint);
+    return url.protocol === 'https:' ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
+async function requestGeminiCommentary(color, index, move, nextEval, content){
+  const endpoint = getGeminiEndpoint();
+  if (!geminiEnabled || !endpoint || !content || typeof content === 'string') return;
+
+  const entry = commentaryHistory[color][index];
+  if (!entry) return;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        move: move.san,
+        color: color === 'w' ? '백' : '흑',
+        evaluation: formatEvalForText(nextEval),
+        classification: content.title,
+        stockfishReason: content.body || [],
+        expected: content.expected || '',
+        alternative: content.alternative || ''
+      })
+    });
+    if (!response.ok) return;
+
+    const result = await response.json();
+    if (!Array.isArray(result.body) || !result.body.length) return;
+
+    const currentEntry = commentaryHistory[color][index];
+    if (!currentEntry || currentEntry.ply !== entry.ply) return;
+    currentEntry.text = {
+      ...content,
+      body: result.body.slice(0, 2).map((line) => String(line).trim()).filter(Boolean)
+    };
+    renderCommentaryPanel(color);
+  } catch {
+    // Keep the Stockfish explanation when the optional AI service is unavailable.
+  }
+}
+
 function queueMoveCommentary(move, prevFen){
   const color = move.color;
   commentaryHistory[color].push({
     ply: game.history().length,
     san: move.san,
     text: move.san.includes('#')
-      ? `${move.san}: 체크메이트를 만든 수입니다.`
-      : `${move.san}: 엔진이 이 수를 평가하는 중입니다.`
+      ? '체크메이트'
+      : '분석 중…'
   });
   commentaryIndex[color] = commentaryHistory[color].length - 1;
   pendingCommentary = {
@@ -1182,7 +1248,8 @@ function queueMoveCommentary(move, prevFen){
 function finalizeMoveCommentary(nextEval){
   if (!pendingCommentary) return;
   if (game.history().length !== pendingCommentary.ply) return;
-  commentaryHistory[pendingCommentary.color][pendingCommentary.index].text = buildMoveCommentary(
+  const {color, index, move} = pendingCommentary;
+  const content = buildMoveCommentary(
     pendingCommentary.move,
     pendingCommentary.prevEval,
     nextEval,
@@ -1190,7 +1257,9 @@ function finalizeMoveCommentary(nextEval){
     pendingCommentary.prevFen,
     snapshotAnalysis()
   );
-  renderCommentaryPanel(pendingCommentary.color);
+  commentaryHistory[color][index].text = content;
+  renderCommentaryPanel(color);
+  requestGeminiCommentary(color, index, move, nextEval, content);
   pendingCommentary = null;
 }
 
@@ -1696,6 +1765,17 @@ boardThemeEl.addEventListener('change', (e) => {
 backgroundThemeEl.addEventListener('change', (e) => {
   currentBackgroundTheme = BACKGROUND_THEME_IDS.has(e.target.value) ? e.target.value : 'white';
   document.documentElement.dataset.backgroundTheme = currentBackgroundTheme === 'white' ? '' : currentBackgroundTheme;
+  saveUserSettings();
+});
+
+geminiEnabledEl.addEventListener('change', (e) => {
+  geminiEnabled = e.target.checked;
+  saveUserSettings();
+});
+
+geminiEndpointEl.addEventListener('change', (e) => {
+  geminiEndpoint = e.target.value.trim();
+  e.target.value = geminiEndpoint;
   saveUserSettings();
 });
 
