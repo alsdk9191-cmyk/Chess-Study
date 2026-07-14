@@ -67,6 +67,9 @@
     font-size:14px;
     margin:6px 0 0;
   }
+  .mobile-commentary{
+    display:none;
+  }
   .hero-status{
     margin-top:16px;
     min-width:min(92vw,420px);
@@ -574,6 +577,47 @@
     margin-top:26px;color:var(--muted);font-size:12px;text-align:center;
   }
   @media (max-width: 760px){
+    header{
+      width:min(100%, 520px);
+      margin-bottom:20px;
+    }
+    .hero-intro{
+      display:none;
+    }
+    .mobile-commentary{
+      display:block;
+      width:100%;
+      box-sizing:border-box;
+      padding:14px 16px;
+      text-align:left;
+      background:linear-gradient(180deg,var(--status-start),var(--status-end));
+      border:1px solid var(--soft-line);
+      border-radius:12px;
+      box-shadow:0 16px 40px -24px rgba(28,39,49,.18), inset 0 0 0 1px rgba(255,255,255,.5);
+    }
+    .mobile-commentary-label{
+      margin-bottom:6px;
+      color:var(--brass);
+      font-family:'JetBrains Mono',monospace;
+      font-size:10px;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+    .mobile-commentary-title{
+      margin-bottom:4px;
+      color:var(--ivory);
+      font-size:16px;
+      font-weight:700;
+    }
+    .mobile-commentary-body,
+    .mobile-commentary-empty{
+      color:var(--page-muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+    .mobile-commentary-body + .mobile-commentary-body{
+      margin-top:2px;
+    }
     .controls-grid{
       grid-template-columns:1fr;
     }
