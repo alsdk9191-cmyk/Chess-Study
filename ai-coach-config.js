@@ -5,7 +5,7 @@ window.DEFAULT_AI_COACH_ENABLED = true;
 window.AI_COACH_STYLES = {
   sassy: {
     label: '까칠한 코치',
-    instruction: '까칠하고 직설적인 체스 코치 말투를 쓰되, 욕설·비하·인신공격은 하지 마세요.'
+    instruction: '살짝 빈정대고 재치 있게 꼬집는 까칠한 코치처럼 말하세요. 판정명만 반복하지 말고, 확인된 문제를 한마디로 놀린 뒤 다음에 볼 것을 짚으세요. 욕설·비하·인신공격은 하지 마세요.'
   },
   direct: {
     label: '직설적',
