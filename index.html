@@ -38,9 +38,11 @@
     </div>
 
     <div class="review-bar">
+      <button class="ai-scene-jump" id="reviewPrevAiBtn" type="button" aria-label="이전 AI 장면" title="이전 AI 장면" disabled>&#8810;</button>
       <button id="reviewPrevBtn" type="button" aria-label="이전 국면">&#8592;</button>
       <div class="review-status" id="reviewStatus">현재 0 / 0</div>
       <button id="reviewNextBtn" type="button" aria-label="다음 국면">&#8594;</button>
+      <button class="ai-scene-jump" id="reviewNextAiBtn" type="button" aria-label="다음 AI 장면" title="다음 AI 장면" disabled>&#8811;</button>
       <button class="ai-review-button" id="aiGameReviewBtn" type="button" disabled>AI 전체 리뷰</button>
     </div>
     <section class="ai-game-review" id="aiGameReviewPanel" hidden aria-live="polite"></section>
@@ -245,6 +247,8 @@ const geminiConnectionStatusEl = document.getElementById('geminiConnectionStatus
 const opponentCommentaryToggleEl = document.getElementById('opponentCommentaryToggle');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
 const reviewNextBtn = document.getElementById('reviewNextBtn');
+const reviewPrevAiBtn = document.getElementById('reviewPrevAiBtn');
+const reviewNextAiBtn = document.getElementById('reviewNextAiBtn');
 const reviewStatusEl = document.getElementById('reviewStatus');
 const aiGameReviewBtn = document.getElementById('aiGameReviewBtn');
 const aiGameReviewPanel = document.getElementById('aiGameReviewPanel');
@@ -1080,6 +1084,32 @@ function renderReviewControls(){
     ? '현재 0 / 0'
     : (isReviewing() ? `리뷰 ${displayPly} / ${total}` : `현재 ${displayPly} / ${total}`);
   updateAIReviewButton();
+  updateAISceneJumpButtons();
+}
+
+function getAICommentaryPlys(){
+  return getOrderedCommentaryEntries()
+    .filter((entry) => entry.analysis?.color === playerColor && entry.aiReviewNote)
+    .map((entry) => entry.ply)
+    .sort((a, b) => a - b);
+}
+
+function getAdjacentAICommentaryPly(direction){
+  const currentPly = getDisplayPly();
+  const plys = getAICommentaryPlys();
+  if (direction < 0) return [...plys].reverse().find((ply) => ply < currentPly) ?? null;
+  return plys.find((ply) => ply > currentPly) ?? null;
+}
+
+function updateAISceneJumpButtons(){
+  const reviewReady = aiGameReviewState === 'done';
+  reviewPrevAiBtn.disabled = !reviewReady || getAdjacentAICommentaryPly(-1) === null;
+  reviewNextAiBtn.disabled = !reviewReady || getAdjacentAICommentaryPly(1) === null;
+}
+
+function jumpToAICommentary(direction){
+  const targetPly = getAdjacentAICommentaryPly(direction);
+  if (targetPly !== null) setReviewPly(targetPly);
 }
 
 function setReviewPly(nextPly){
@@ -1940,6 +1970,8 @@ hintToggleEl.addEventListener('change', updateHintDisplay);
 opponentHintToggleEl.addEventListener('change', updateHintDisplay);
 reviewPrevBtn.addEventListener('click', () => setReviewPly(getDisplayPly() - 1));
 reviewNextBtn.addEventListener('click', () => setReviewPly(getDisplayPly() + 1));
+reviewPrevAiBtn.addEventListener('click', () => jumpToAICommentary(-1));
+reviewNextAiBtn.addEventListener('click', () => jumpToAICommentary(1));
 aiGameReviewBtn.addEventListener('click', requestGeminiGameReview);
 
 commentaryViews.w.prevBtn.addEventListener('click', () => {
