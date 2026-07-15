@@ -1087,7 +1087,8 @@ async function requestGeminiGameReview(){
     aiGameReviewState = 'done';
     applyAIReviewMoments(result);
     renderAIReviewSummary(result);
-    setGeminiConnectionStatus('Gemini 연결됨', 'success');
+    const usedModel = String(responseData.model || aiRequest.model || '').trim();
+    setGeminiConnectionStatus(usedModel ? `Gemini 연결됨 · ${usedModel}` : 'Gemini 연결됨', 'success');
     setReviewPly(0);
     updateAIReviewButton();
   } catch {

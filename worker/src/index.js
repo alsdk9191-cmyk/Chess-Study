@@ -90,6 +90,9 @@ export default {
       .join('')
       .trim();
     if (!text) return json({error:'Gemini 응답이 비어 있습니다.'}, 502, cors);
-    return json({text}, 200, cors);
+    const modelVersion = typeof geminiData.modelVersion === 'string' && geminiData.modelVersion.trim()
+      ? geminiData.modelVersion.trim()
+      : model;
+    return json({text, model:modelVersion}, 200, cors);
   }
 };
