@@ -104,12 +104,12 @@
     letter-spacing:-0.02em;
   }
   .layout{
-    display:flex;
+    display:grid;
+    grid-template-columns:minmax(0,520px) minmax(0,320px);
     gap:28px;
-    flex-wrap:wrap;
     justify-content:center;
     align-items:flex-start;
-    max-width:1080px;
+    max-width:868px;
     width:100%;
   }
   .board-column{
@@ -329,6 +329,7 @@
     color:var(--active-text);
   }
   .ai-game-review{
+    min-width:0;
     width:min(100%, 520px);
     box-sizing:border-box;
     padding:16px 18px;
@@ -336,6 +337,8 @@
     border:1px solid var(--soft-border);
     border-radius:8px;
     color:var(--ivory);
+    overflow-wrap:anywhere;
+    word-break:break-word;
   }
   .ai-game-review-title{font-weight:800;color:var(--brass);margin-bottom:8px;}
   .ai-game-review-summary{font-size:14px;line-height:1.65;margin-bottom:12px;}
@@ -648,6 +651,14 @@
   .promo-overlay button:hover{background:var(--brass);color:var(--active-text);}
   footer{
     margin-top:26px;color:var(--muted);font-size:12px;text-align:center;
+  }
+  @media (max-width: 899px){
+    .layout{
+      grid-template-columns:minmax(0,520px);
+    }
+    .panel{
+      justify-self:center;
+    }
   }
   @media (max-width: 760px){
     header{
