@@ -863,38 +863,45 @@ function analyzeNextMoveThreat(fen, pv, defenderColor){
   }
 }
 
-function analyzeImmediateForkThreat(fen, defenderColor){
-  if (!fen) return null;
+function analyzeImmediateForkThreat(fen, pv, defenderColor){
+  if (!fen || !Array.isArray(pv) || pv.length < 2) return null;
   try {
     const position = new Chess(fen);
-    const candidates = position.moves({verbose:true});
-    const threats = [];
+    const initialBalance = getMaterialBalance(position, position.turn());
+    let candidate = null;
+    let targets = [];
 
-    candidates.forEach((candidate) => {
-      const next = new Chess(fen);
-      const move = next.move({
-        from: candidate.from,
-        to: candidate.to,
-        promotion: candidate.promotion
+    // A fork is only worth mentioning when it is Stockfish's best continuation.
+    for (const [ply, uci] of pv.slice(0, 8).entries()){
+      const move = position.move({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci.length > 4 ? uci[4] : undefined
       });
-      if (!move) return;
-      const targets = getDirectAttackTargets(next, move.to, defenderColor)
-        .filter((target) => (PIECE_VALUES[target.piece.type] || 0) >= 3);
-      if (targets.length < 2) return;
-      threats.push({
-        replySan: move.san,
-        targets: targets.map((target) => ({
-          square: target.square,
-          pieceName: getPieceName(target.piece.type),
-          value: PIECE_VALUES[target.piece.type] || 0
-        })),
-        value: targets.reduce((total, target) => total + (PIECE_VALUES[target.piece.type] || 0), 0),
-        isFork: true
-      });
-    });
+      if (!move) return null;
+      if (ply === 0){
+        candidate = move;
+        targets = getDirectAttackTargets(position, move.to, defenderColor)
+          .filter((target) => (PIECE_VALUES[target.piece.type] || 0) >= 3);
+        if (targets.length < 2) return null;
+      }
+    }
 
-    threats.sort((a, b) => b.value - a.value);
-    return threats[0] || null;
+    const materialGain = getMaterialBalance(position, candidate.color) - initialBalance;
+    // Do not surface geometric forks that vanish after the opponent's best reply.
+    if (materialGain < 1) return null;
+
+    return {
+      replySan: candidate.san,
+      targets: targets.map((target) => ({
+        square: target.square,
+        pieceName: getPieceName(target.piece.type),
+        value: PIECE_VALUES[target.piece.type] || 0
+      })),
+      value: targets.reduce((total, target) => total + (PIECE_VALUES[target.piece.type] || 0), 0),
+      materialGain,
+      isFork: true
+    };
   } catch {
     return null;
   }
@@ -1005,7 +1012,7 @@ function buildMoveCommentary(move, prevEval, nextEval, analysisSnapshot, prevFen
     ? replySnapshot.lines.find((line) => line.multipv === 1)
     : null;
   const consequence = analyzePvConsequences(game.fen(), replyLine ? replyLine.pv : [], move.color);
-  const predictedThreat = analyzeImmediateForkThreat(game.fen(), move.color)
+  const predictedThreat = analyzeImmediateForkThreat(game.fen(), replyLine ? replyLine.pv : [], move.color)
     || analyzeNextMoveThreat(game.fen(), replyLine ? replyLine.pv : [], move.color);
   let summary = classifyMoveDelta(deltaForMover);
   if (isPrincipledOpeningMove(move, prevFen)
