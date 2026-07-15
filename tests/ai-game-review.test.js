@@ -64,4 +64,18 @@ const moves = [
   );
 }
 
+{
+  const response = JSON.stringify({
+    summary:'아주 놀라운 경기였네요. (정말 대단한 판단입니다. 이걸 또 놓치셨네요.)',
+    weaknesses:['체크부터 확인해봐요. (기본부터 다시 보세요.)'],
+    goals:[],
+    moments:[]
+  });
+  const result = review.parseResponse(response, moves, 'w');
+  const parentheticalText = [result.summary, ...result.weaknesses]
+    .flatMap((text) => [...text.matchAll(/\(([^()]*)\)/g)].map((match) => match[1]))
+    .join(' ');
+  assert.ok(!/(요|습니다|세요|셨)/.test(parentheticalText), '모든 출력 필드의 괄호 속 존댓말을 제거한다');
+}
+
 console.log('ai-game-review tests passed');

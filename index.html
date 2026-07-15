@@ -793,7 +793,7 @@ function appendAIReviewNote(parent, note){
     line.appendChild(title);
   }
   const message = [note.comment, note.innerThought ? `(${note.innerThought})` : ''].filter(Boolean).join(' ');
-  if (message) line.appendChild(document.createTextNode(`${note.title ? ' ' : ''}${message}`));
+  if (message) line.appendChild(document.createTextNode(`${note.title ? ' - ' : ''}${message}`));
   parent.appendChild(line);
 }
 

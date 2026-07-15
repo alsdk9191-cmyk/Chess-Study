@@ -20,8 +20,22 @@
       .replace(/^\(|\)$/g, '')
       .replace(/계신/g, '있는')
       .replace(/하시는/g, '하는')
+      .replace(/하셨습니다/g, '했네')
+      .replace(/했습니다/g, '했네')
+      .replace(/하시네요/g, '하네')
       .replace(/하셨네요/g, '했네')
       .replace(/했네요/g, '했네')
+      .replace(/셨/g, '었')
+      .replace(/겠습니다/g, '겠네')
+      .replace(/있습니다/g, '있네')
+      .replace(/없습니다/g, '없네')
+      .replace(/됩니다/g, '돼')
+      .replace(/입니다/g, '이네')
+      .replace(/합니다/g, '해')
+      .replace(/주세요/g, '줘')
+      .replace(/보세요/g, '봐')
+      .replace(/하세요/g, '해')
+      .replace(/이세요/g, '이야')
       .replace(/건가요/g, '건가')
       .replace(/인가요/g, '인가')
       .replace(/군요/g, '군')
@@ -30,7 +44,14 @@
       .replace(/어요/g, '어')
       .replace(/아요/g, '아')
       .replace(/습니다/g, '네')
+      .replace(/세요/g, '')
+      .replace(/죠(?=[.!?]|$)/g, '지')
+      .replace(/요(?=[.!?]|$)/g, '')
       .trim();
+  }
+
+  function normalizeParentheticalThoughts(value){
+    return shortText(value).replace(/\(([^()]*)\)/g, (_, thought) => `(${normalizeInnerThought(thought)})`);
   }
 
   function normalizeMoves(moves){
@@ -109,9 +130,11 @@
     for (const candidate of candidates){
       try {
         const data = JSON.parse(candidate);
-        const summary = shortText(data.summary);
+        const summary = normalizeParentheticalThoughts(data.summary);
         if (!summary) continue;
-        const list = (value, limit) => Array.isArray(value) ? value.map(shortText).filter(Boolean).slice(0, limit) : [];
+        const list = (value, limit) => Array.isArray(value)
+          ? value.map(normalizeParentheticalThoughts).filter(Boolean).slice(0, limit)
+          : [];
         const moments = Array.isArray(data.moments) ? data.moments.map((moment) => {
           const requestedPly = Number(moment?.ply);
           const san = shortText(moment?.san);
@@ -121,7 +144,7 @@
             if (sameSanMoves.length === 1) matchedMove = sameSanMoves[0];
           }
           if (!matchedMove) return null;
-          let comment = shortText(moment?.comment);
+          let comment = normalizeParentheticalThoughts(moment?.comment);
           let innerThought = normalizeInnerThought(moment?.innerThought);
           const legacyThought = comment.match(/\s*\(([^()]*)\)\s*$/);
           if (legacyThought){
@@ -170,5 +193,5 @@
     return null;
   }
 
-  return {createRequest, getDecisiveMove, normalizeInnerThought, normalizeMoves, parseResponse};
+  return {createRequest, getDecisiveMove, normalizeInnerThought, normalizeParentheticalThoughts, normalizeMoves, parseResponse};
 });
