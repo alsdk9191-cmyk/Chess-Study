@@ -24,17 +24,28 @@ function shortText(value){
 
 function parseModelJson(text){
   const source = String(text || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
-  try {
-    const data = JSON.parse(source);
-    if (!Array.isArray(data.body)) return null;
-    const body = data.body
-      .map(shortText)
-      .filter(Boolean)
-      .slice(0, 2);
-    return body.length ? {body} : null;
-  } catch {
-    return null;
+  const candidates = [source];
+  const objectStart = source.indexOf('{');
+  const objectEnd = source.lastIndexOf('}');
+  if (objectStart >= 0 && objectEnd > objectStart) candidates.push(source.slice(objectStart, objectEnd + 1));
+
+  for (const candidate of candidates){
+    try {
+      const data = JSON.parse(candidate);
+      const lines = Array.isArray(data.body) ? data.body : [data.body];
+      const body = lines.map(shortText).filter(Boolean).slice(0, 2);
+      if (body.length) return {body};
+    } catch {
+      // Try the next JSON-shaped section, then fall back to plain text.
+    }
   }
+
+  const body = source
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map(shortText)
+    .filter(Boolean)
+    .slice(0, 2);
+  return body.length ? {body} : null;
 }
 
 export default {
@@ -73,10 +84,10 @@ export default {
       '당신은 한국어 체스 코치입니다.',
       'Stockfish가 제공한 사실만 사용하고, 없는 전술이나 기물 손실을 추측하지 마세요.',
       '평가 라벨을 바꾸지 말고 기보 표기를 제목처럼 반복하지 마세요.',
-      context.coachStyle || '직설적이되 예의 있는 체스 코치 말투를 쓰세요.',
+      context.coachStyle || '까칠하고 직설적인 체스 코치 말투를 쓰되, 욕설·비하·인신공격은 하지 마세요.',
       '초급자가 바로 이해할 수 있는 짧은 문장만 작성하세요.',
-      '반드시 JSON만 반환하세요: {"body":["핵심 이유", "짧은 학습 포인트"]}.',
-      'body는 1~2문장이고 각 문장은 80자 이하여야 합니다.',
+      'JSON, 코드 블록, 인삿말 없이 한국어 해설 1~2문장만 출력하세요.',
+      '각 문장은 80자 이하여야 합니다.',
       `분석 데이터: ${JSON.stringify(context)}`
     ].join('\n');
 
@@ -92,7 +103,7 @@ export default {
         },
         body: JSON.stringify({
           contents: [{parts: [{text: prompt}]}],
-          generationConfig: {temperature: 0.2, maxOutputTokens: 180, responseMimeType: 'application/json'}
+          generationConfig: {temperature: 0.2, maxOutputTokens: 180}
         })
       });
     } catch (error) {

@@ -109,10 +109,16 @@
 
         <div class="field">
           <label>AI 해설</label>
-          <label class="ai-toggle">
-            <input type="checkbox" id="geminiEnabled">
-            <span>Gemini 사용</span>
-          </label>
+          <div class="hint-toggles ai-commentary-toggles">
+            <label class="hint-toggle">
+              <input type="checkbox" id="geminiMyCommentary">
+              <span>내 해설</span>
+            </label>
+            <label class="hint-toggle">
+              <input type="checkbox" id="geminiOpponentCommentary">
+              <span>상대 해설</span>
+            </label>
+          </div>
           <select id="geminiCoachStyle" aria-label="AI 코치 말투"></select>
           <div class="ai-connection-status" id="geminiConnectionStatus" aria-live="polite"></div>
         </div>
@@ -223,7 +229,8 @@ const difficultyValueEl = document.getElementById('difficultyValue');
 const pieceThemeEl = document.getElementById('pieceTheme');
 const boardThemeEl = document.getElementById('boardTheme');
 const backgroundThemeEl = document.getElementById('backgroundTheme');
-const geminiEnabledEl = document.getElementById('geminiEnabled');
+const geminiMyCommentaryEl = document.getElementById('geminiMyCommentary');
+const geminiOpponentCommentaryEl = document.getElementById('geminiOpponentCommentary');
 const geminiCoachStyleEl = document.getElementById('geminiCoachStyle');
 const geminiConnectionStatusEl = document.getElementById('geminiConnectionStatus');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
@@ -330,8 +337,8 @@ let currentBoardTheme = 'wood';
 let currentBackgroundTheme = 'white';
 // Keep a fallback here so AI commentary still works if the optional config file is cached or unavailable.
 const GEMINI_WORKER_URL = window.GEMINI_WORKER_URL || 'https://floral-mouse-f1ca.outofwell.workers.dev';
-const DEFAULT_AI_COACH_ENABLED = window.DEFAULT_AI_COACH_ENABLED !== false;
-let geminiEnabled = DEFAULT_AI_COACH_ENABLED;
+let geminiMyCommentary = true;
+let geminiOpponentCommentary = false;
 const AI_COACH_STYLES = window.AI_COACH_STYLES || {};
 const DEFAULT_AI_COACH_STYLE = window.DEFAULT_AI_COACH_STYLE || 'sassy';
 let geminiCoachStyle = DEFAULT_AI_COACH_STYLE;
@@ -346,8 +353,9 @@ function saveUserSettings(){
       pieceTheme: currentPieceTheme,
       boardTheme: currentBoardTheme,
       backgroundTheme: currentBackgroundTheme,
-      geminiEnabled,
-      geminiConfigured: true,
+      geminiMyCommentary,
+      geminiOpponentCommentary,
+      geminiCommentaryConfigured: true,
       geminiCoachStyle
     }));
   } catch {
@@ -365,7 +373,12 @@ function restoreUserSettings(){
     if (saved.pieceTheme in PIECE_THEMES) currentPieceTheme = saved.pieceTheme;
     if (BOARD_THEME_IDS.has(saved.boardTheme)) currentBoardTheme = saved.boardTheme;
     if (BACKGROUND_THEME_IDS.has(saved.backgroundTheme)) currentBackgroundTheme = saved.backgroundTheme;
-    if (saved.geminiConfigured === true && typeof saved.geminiEnabled === 'boolean') geminiEnabled = saved.geminiEnabled;
+    if (saved.geminiCommentaryConfigured === true){
+      if (typeof saved.geminiMyCommentary === 'boolean') geminiMyCommentary = saved.geminiMyCommentary;
+      if (typeof saved.geminiOpponentCommentary === 'boolean') geminiOpponentCommentary = saved.geminiOpponentCommentary;
+    } else if (saved.geminiConfigured === true && typeof saved.geminiEnabled === 'boolean') {
+      geminiMyCommentary = saved.geminiEnabled;
+    }
     if (typeof saved.geminiCoachStyle === 'string' && saved.geminiCoachStyle in AI_COACH_STYLES) geminiCoachStyle = saved.geminiCoachStyle;
   } catch {
     // Ignore invalid or old saved settings and keep the defaults.
@@ -374,12 +387,13 @@ function restoreUserSettings(){
   pieceThemeEl.value = currentPieceTheme;
   boardThemeEl.value = currentBoardTheme;
   backgroundThemeEl.value = currentBackgroundTheme;
-  geminiEnabledEl.checked = geminiEnabled;
+  geminiMyCommentaryEl.checked = geminiMyCommentary;
+  geminiOpponentCommentaryEl.checked = geminiOpponentCommentary;
   geminiCoachStyleEl.innerHTML = Object.entries(AI_COACH_STYLES)
     .map(([id, style]) => `<option value="${id}">${style.label}</option>`)
     .join('');
   geminiCoachStyleEl.value = geminiCoachStyle;
-  setGeminiConnectionStatus(GEMINI_WORKER_URL ? 'Gemini 자동 연결' : 'Worker 주소가 설정되지 않았습니다.');
+  refreshGeminiConnectionStatus();
   document.documentElement.dataset.boardTheme = currentBoardTheme === 'wood' ? '' : currentBoardTheme;
   document.documentElement.dataset.backgroundTheme = currentBackgroundTheme === 'white' ? '' : currentBackgroundTheme;
   syncDifficultyUi();
@@ -1203,9 +1217,21 @@ function setGeminiConnectionStatus(message, state = ''){
   geminiConnectionStatusEl.dataset.state = state;
 }
 
+function refreshGeminiConnectionStatus(){
+  if (!geminiMyCommentary && !geminiOpponentCommentary){
+    setGeminiConnectionStatus('Gemini 해설 꺼짐');
+  } else {
+    setGeminiConnectionStatus(GEMINI_WORKER_URL ? 'Gemini 자동 연결' : 'Worker 주소가 설정되지 않았습니다.');
+  }
+}
+
+function shouldRequestGeminiCommentary(color){
+  return color === playerColor ? geminiMyCommentary : geminiOpponentCommentary;
+}
+
 async function requestGeminiCommentary(color, index, move, nextEval, content){
   const endpoint = getGeminiEndpoint();
-  if (!geminiEnabled || !endpoint || !content || typeof content === 'string') return;
+  if (!shouldRequestGeminiCommentary(color) || !endpoint || !content || typeof content === 'string') return;
 
   const entry = commentaryHistory[color][index];
   if (!entry) return;
@@ -1800,8 +1826,15 @@ backgroundThemeEl.addEventListener('change', (e) => {
   saveUserSettings();
 });
 
-geminiEnabledEl.addEventListener('change', (e) => {
-  geminiEnabled = e.target.checked;
+geminiMyCommentaryEl.addEventListener('change', (e) => {
+  geminiMyCommentary = e.target.checked;
+  refreshGeminiConnectionStatus();
+  saveUserSettings();
+});
+
+geminiOpponentCommentaryEl.addEventListener('change', (e) => {
+  geminiOpponentCommentary = e.target.checked;
+  refreshGeminiConnectionStatus();
   saveUserSettings();
 });
 
