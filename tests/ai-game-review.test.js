@@ -42,4 +42,26 @@ const moves = [
   assert.equal(result.moments.length, 0, '중복 SAN과 잘못된 ply 조합은 표시하지 않는다');
 }
 
+{
+  const decisiveMoves = moves.map((move) => move.ply === 5 ? {
+    ...move,
+    classification:'블런더',
+    deltaCp:-600,
+    reasons:['강제 메이트를 허용했어요.']
+  } : move);
+  const response = JSON.stringify({summary:'총평', moments:[]});
+  const result = review.parseResponse(response, decisiveMoves, 'w');
+  const decisive = result.moments.find((moment) => moment.ply === 5 && moment.san === 'Ke2');
+  assert.ok(decisive, '결정적 실수는 Gemini가 누락해도 복기 장면에 포함한다');
+  assert.ok(decisive.innerThought, '결정적 실수에는 강한 속마음을 보장한다');
+}
+
+{
+  assert.equal(
+    review.normalizeInnerThought('체스보드를 장식품으로 보고 계신 건가요?'),
+    '체스보드를 장식품으로 보고 있는 건가?',
+    '괄호 속 존댓말을 반말 혼잣말로 정규화한다'
+  );
+}
+
 console.log('ai-game-review tests passed');

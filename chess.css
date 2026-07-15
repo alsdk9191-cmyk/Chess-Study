@@ -353,6 +353,9 @@
     font-size:12px;
     line-height:1.5;
   }
+  .ai-review-note-title{
+    font-style:italic;
+  }
   .review-status{
     min-width:130px;
     text-align:center;

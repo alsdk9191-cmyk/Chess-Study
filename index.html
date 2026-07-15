@@ -782,6 +782,21 @@ function appendCommentaryLine(parent, className, text){
   parent.appendChild(line);
 }
 
+function appendAIReviewNote(parent, note){
+  if (!note) return;
+  const line = document.createElement('div');
+  line.className = 'ai-review-note';
+  if (note.title){
+    const title = document.createElement('span');
+    title.className = 'ai-review-note-title';
+    title.textContent = note.title;
+    line.appendChild(title);
+  }
+  const message = [note.comment, note.innerThought ? `(${note.innerThought})` : ''].filter(Boolean).join(' ');
+  if (message) line.appendChild(document.createTextNode(`${note.title ? ' ' : ''}${message}`));
+  parent.appendChild(line);
+}
+
 function renderCommentaryContent(container, content){
   container.replaceChildren();
   if (!content || typeof content === 'string'){
@@ -817,7 +832,7 @@ function renderCommentaryPanel(color){
 
   const entry = history[index];
   renderCommentaryContent(view.textEl, entry.text);
-  if (entry.aiReviewNote) appendCommentaryLine(view.textEl, 'ai-review-note', `AI 복기: ${entry.aiReviewNote}`);
+  appendAIReviewNote(view.textEl, entry.aiReviewNote);
   view.countEl.textContent = `${index + 1} / ${history.length}`;
   view.prevBtn.disabled = index <= 0;
   view.nextBtn.disabled = index >= history.length - 1;
@@ -851,7 +866,7 @@ function renderMobileCommentary(){
     appendCommentaryLine(mobileCommentaryEl, 'mobile-commentary-body', line);
   });
   const entry = history[index];
-  if (entry.aiReviewNote) appendCommentaryLine(mobileCommentaryEl, 'ai-review-note', `AI 복기: ${entry.aiReviewNote}`);
+  appendAIReviewNote(mobileCommentaryEl, entry.aiReviewNote);
 }
 
 function renderAllCommentaryPanels(){
@@ -1017,7 +1032,11 @@ function applyAIReviewMoments(result){
     const entry = getOrderedCommentaryEntries().find((candidate) => (
       candidate.ply === Number(moment.ply) && candidate.san === String(moment.san || '')
     ));
-    if (entry) entry.aiReviewNote = [moment.title, moment.comment].filter(Boolean).join(' — ');
+    if (entry) entry.aiReviewNote = {
+      title:moment.title || '',
+      comment:moment.comment || '',
+      innerThought:moment.innerThought || ''
+    };
   });
 }
 
@@ -1081,7 +1100,7 @@ async function requestGeminiGameReview(){
     }
 
     const responseData = await response.json();
-    const result = ChessAIReview.parseResponse(responseData.text, reviewMoves);
+    const result = ChessAIReview.parseResponse(responseData.text, reviewMoves, playerColor);
     if (!result) throw new Error('invalid-review');
     aiGameReviewResult = result;
     aiGameReviewState = 'done';

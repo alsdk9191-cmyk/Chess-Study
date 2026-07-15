@@ -15,6 +15,24 @@
     return typeof value === 'string' ? value.trim().slice(0, MAX_TEXT_LENGTH) : '';
   }
 
+  function normalizeInnerThought(value){
+    return shortText(value)
+      .replace(/^\(|\)$/g, '')
+      .replace(/계신/g, '있는')
+      .replace(/하시는/g, '하는')
+      .replace(/하셨네요/g, '했네')
+      .replace(/했네요/g, '했네')
+      .replace(/건가요/g, '건가')
+      .replace(/인가요/g, '인가')
+      .replace(/군요/g, '군')
+      .replace(/네요/g, '네')
+      .replace(/해요/g, '해')
+      .replace(/어요/g, '어')
+      .replace(/아요/g, '아')
+      .replace(/습니다/g, '네')
+      .trim();
+  }
+
   function normalizeMoves(moves){
     return Array.isArray(moves) ? moves.slice(0, MAX_REVIEW_MOVES).map((move) => ({
       ply:Number(move?.ply),
@@ -29,14 +47,28 @@
     })).filter((move) => Number.isInteger(move.ply) && move.ply > 0 && move.san) : [];
   }
 
+  function getDecisiveMove(moves, playerColor){
+    const severity = {'실수':2, '블런더':3};
+    return normalizeMoves(moves)
+      .filter((move) => move.color === playerColor && (severity[move.classification] || move.deltaCp <= -110))
+      .sort((a, b) => {
+        const aScore = (severity[a.classification] || 1) * 100000 + Math.max(0, -(a.deltaCp || 0));
+        const bScore = (severity[b.classification] || 1) * 100000 + Math.max(0, -(b.deltaCp || 0));
+        return bScore - aScore || b.ply - a.ply;
+      })[0] || null;
+  }
+
   function createRequest(options){
     const moves = normalizeMoves(options?.moves);
     if (!moves.length) throw new Error('리뷰할 기보가 없습니다.');
+    const playerColor = options?.playerColor === 'b' ? 'b' : 'w';
+    const decisiveMove = getDecisiveMove(moves, playerColor);
     const context = {
-      playerColor:options?.playerColor === 'b' ? 'black' : 'white',
+      playerColor:playerColor === 'b' ? 'black' : 'white',
       result:shortText(options?.result),
       pgn:String(options?.pgn || '').trim().slice(0, 12000),
       moves,
+      decisiveMove,
       coachStyle:shortText(options?.coachStyle)
     };
     const prompt = [
@@ -57,16 +89,19 @@
       'weaknesses는 "킹의 조기 노출" 같은 딱딱한 명사형 항목으로 쓰지 말고, 실제로 무엇을 놓쳤는지 캐릭터 말투가 담긴 짧은 완성 문장으로 쓰세요.',
       '추상적인 체스 원칙만 말하지 말고 가능한 경우 실제 SAN, 최선 대안, 평가 손실 또는 확인된 결과를 근거로 쓰세요.',
       'summary, weaknesses, goals, moments에서 같은 원인을 표현만 바꿔 반복하지 마세요. moments는 서로 다른 학습 장면만 고르세요.',
+      'decisiveMove가 있으면 그 ply와 san을 moments에 반드시 포함하세요. 이 장면의 innerThought는 경기에서 가장 강하고 재미있는 반말 혼잣말이어야 하며 비워 두지 마세요.',
+      '각 moment의 comment에는 체스 설명만 쓰고 괄호 속마음은 넣지 마세요. 속마음은 innerThought에 괄호 없이 짧은 반말로 따로 쓰세요. 속마음에 "요", "습니다", "세요" 같은 존댓말 어미를 쓰지 마세요.',
       'goals는 다음 판에서 바로 실행할 수 있는 짧은 행동으로 쓰고, 명령문보다 함께 복기하는 듯한 제안형 구어체를 사용하세요.',
       '아래 JSON 형식만 출력하세요:',
-      '{"summary":"경기 총평 2~3문장","strengths":["잘한 점"],"weaknesses":["고칠 점"],"goals":["다음 경기 목표"],"moments":[{"ply":1,"san":"e4","title":"장면 제목","comment":"이 수에서 배울 점"}]}',
+      '{"summary":"경기 총평 2~3문장","strengths":["잘한 점"],"weaknesses":["고칠 점"],"goals":["다음 경기 목표"],"moments":[{"ply":1,"san":"e4","title":"장면 제목","comment":"이 수에서 배울 점","innerThought":"짧은 반말 혼잣말"}]}',
       `경기 데이터: ${JSON.stringify(context)}`
     ].filter(Boolean).join('\n');
     return {prompt, model:MODEL, temperature:TEMPERATURE, maxOutputTokens:MAX_OUTPUT_TOKENS};
   }
 
-  function parseResponse(text, sourceMoves){
+  function parseResponse(text, sourceMoves, playerColor){
     const moves = normalizeMoves(sourceMoves);
+    const decisiveMove = getDecisiveMove(moves, playerColor === 'b' ? 'b' : 'w');
     const source = String(text || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
     const start = source.indexOf('{');
     const end = source.lastIndexOf('}');
@@ -86,13 +121,41 @@
             if (sameSanMoves.length === 1) matchedMove = sameSanMoves[0];
           }
           if (!matchedMove) return null;
+          let comment = shortText(moment?.comment);
+          let innerThought = normalizeInnerThought(moment?.innerThought);
+          const legacyThought = comment.match(/\s*\(([^()]*)\)\s*$/);
+          if (legacyThought){
+            if (!innerThought) innerThought = normalizeInnerThought(legacyThought[1]);
+            comment = comment.slice(0, legacyThought.index).trim();
+          }
           return {
             ply:matchedMove.ply,
             san:matchedMove.san,
             title:shortText(moment?.title),
-            comment:shortText(moment?.comment)
+            comment,
+            innerThought
           };
         }).filter((moment) => moment && moment.comment).slice(0, 5) : [];
+
+        if (decisiveMove){
+          let decisiveMoment = moments.find((moment) => moment.ply === decisiveMove.ply && moment.san === decisiveMove.san);
+          if (!decisiveMoment){
+            decisiveMoment = {
+              ply:decisiveMove.ply,
+              san:decisiveMove.san,
+              title:'결정적인 실수',
+              comment:decisiveMove.reasons[0] || (decisiveMove.alternative
+                ? `${decisiveMove.san} 대신 ${decisiveMove.alternative}를 봤으면 좋았겠네요.`
+                : `${decisiveMove.san}에서 가장 큰 손실을 허용했네요.`),
+              innerThought:''
+            };
+            if (moments.length >= 5) moments[moments.length - 1] = decisiveMoment;
+            else moments.push(decisiveMoment);
+          }
+          if (!decisiveMoment.innerThought){
+            decisiveMoment.innerThought = '결국 가장 중요한 순간에 이걸 고르네. 기대를 접는 게 빠르겠어.';
+          }
+        }
         return {
           summary,
           strengths:list(data.strengths, 3),
@@ -107,5 +170,5 @@
     return null;
   }
 
-  return {createRequest, normalizeMoves, parseResponse};
+  return {createRequest, getDecisiveMove, normalizeInnerThought, normalizeMoves, parseResponse};
 });
