@@ -1145,6 +1145,7 @@ function applyAIReviewMoments(result){
   getOrderedCommentaryEntries().forEach((entry) => { delete entry.aiReviewNote; });
   (result.moments || []).forEach((moment) => {
     const entry = getOrderedCommentaryEntries().find((candidate) => (
+      candidate.analysis?.color === playerColor &&
       candidate.ply === Number(moment.ply) && candidate.san === String(moment.san || '')
     ));
     if (entry) entry.aiReviewNote = {
@@ -1166,7 +1167,7 @@ async function requestGeminiGameReview(){
   const entries = getOrderedCommentaryEntries();
   if (!entries.length || entries.some((entry) => !entry.analysis)) return;
   const coachStyle = AI_COACH_STYLES[geminiCoachStyle]?.instruction || AI_COACH_STYLES[DEFAULT_AI_COACH_STYLE]?.instruction || '';
-  const reviewMoves = entries.map((entry) => ({
+  const reviewMoves = entries.filter((entry) => entry.analysis.color === playerColor).map((entry) => ({
     ply:entry.ply,
     san:entry.san,
     color:entry.analysis.color,
@@ -1175,7 +1176,15 @@ async function requestGeminiGameReview(){
     bestMove:entry.analysis.bestMove || '',
     reasons:Array.isArray(entry.text?.body) ? entry.text.body : [],
     expected:entry.text?.expected || '',
-    alternative:entry.text?.alternative || ''
+    alternative:entry.text?.alternative || '',
+    rule:entry.analysis.classification?.rule || '',
+    materialLoss:entry.analysis.consequence?.materialLoss || 0,
+    mateAgainstMover:Boolean(entry.analysis.consequence?.mateAgainstMover),
+    verifiedTactic:Boolean(entry.analysis.verifiedTactic),
+    isCheck:entry.analysis.move?.san?.includes('+') || false,
+    isMate:entry.analysis.move?.san?.includes('#') || false,
+    captured:entry.analysis.move?.captured || '',
+    promotion:entry.analysis.move?.promotion || ''
   }));
   let aiRequest;
   try {

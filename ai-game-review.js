@@ -7,7 +7,7 @@
 
   const MODEL = 'gemini-3.1-flash-lite';
   const TEMPERATURE = 1.0;
-  const MAX_OUTPUT_TOKENS = 1000;
+  const BASE_OUTPUT_TOKENS = 1000;
   const MAX_TEXT_LENGTH = 700;
   const MAX_REVIEW_MOVES = 160;
 
@@ -64,8 +64,51 @@
       bestMove:shortText(move?.bestMove),
       reasons:Array.isArray(move?.reasons) ? move.reasons.map(shortText).filter(Boolean).slice(0, 2) : [],
       expected:shortText(move?.expected),
-      alternative:shortText(move?.alternative)
+      alternative:shortText(move?.alternative),
+      rule:shortText(move?.rule),
+      materialLoss:Number.isFinite(move?.materialLoss) ? Math.max(0, Number(move.materialLoss)) : 0,
+      mateAgainstMover:Boolean(move?.mateAgainstMover),
+      verifiedTactic:Boolean(move?.verifiedTactic),
+      isCheck:Boolean(move?.isCheck),
+      isMate:Boolean(move?.isMate),
+      captured:shortText(move?.captured),
+      promotion:shortText(move?.promotion)
     })).filter((move) => Number.isInteger(move.ply) && move.ply > 0 && move.san) : [];
+  }
+
+  function getCriticalMoveInfo(move){
+    const loss = Number.isFinite(move.deltaCp) ? Math.max(0, -move.deltaCp) : 0;
+    if (move.mateAgainstMover || move.rule === 'forced-mate') return {key:'allowed-mate', score:10000 + loss};
+    if (move.isMate) return {key:'delivered-mate', score:9500};
+    if (move.materialLoss >= 3) return {key:'material-loss', score:8000 + move.materialLoss * 100 + loss};
+    if (move.verifiedTactic) return {key:'verified-tactic', score:7500 + loss};
+    if (move.classification === '블런더') return {key:`blunder:${move.rule || 'evaluation'}`, score:7000 + loss};
+    if (move.classification === '실수') return {key:`mistake:${move.rule || 'evaluation'}`, score:6000 + loss};
+    if (loss >= 80) return {key:'large-inaccuracy', score:5000 + loss};
+    if (move.promotion) return {key:'promotion', score:4500};
+    if (move.captured === 'q' || move.captured === 'r') return {key:'major-capture', score:4000 + (move.captured === 'q' ? 900 : 500)};
+    if (move.classification === '최선') return {key:'best-move', score:3500 + Math.max(0, move.deltaCp || 0)};
+    if (move.classification === '정확한 수') return {key:'accurate-move', score:3000 + Math.max(0, move.deltaCp || 0)};
+    return null;
+  }
+
+  function selectCriticalMoves(moves, playerColor){
+    const color = playerColor === 'b' ? 'b' : 'w';
+    const selected = [];
+    normalizeMoves(moves)
+      .filter((move) => move.color === color)
+      .sort((a, b) => a.ply - b.ply)
+      .forEach((move) => {
+        const importance = getCriticalMoveInfo(move);
+        if (!importance) return;
+        const previous = selected[selected.length - 1];
+        if (previous && previous.importance.key === importance.key && move.ply - previous.move.ply <= 2){
+          if (importance.score > previous.importance.score) selected[selected.length - 1] = {move, importance};
+          return;
+        }
+        selected.push({move, importance});
+      });
+    return selected.map((item) => item.move);
   }
 
   function getDecisiveMove(moves, playerColor){
@@ -80,9 +123,8 @@
   }
 
   function createRequest(options){
-    const moves = normalizeMoves(options?.moves);
-    if (!moves.length) throw new Error('리뷰할 기보가 없습니다.');
     const playerColor = options?.playerColor === 'b' ? 'b' : 'w';
+    const moves = selectCriticalMoves(options?.moves, playerColor);
     const decisiveMove = getDecisiveMove(moves, playerColor);
     const context = {
       playerColor:playerColor === 'b' ? 'black' : 'white',
@@ -95,8 +137,9 @@
     const prompt = [
       '당신은 한국어 체스 복기 코치입니다.',
       '한 수씩 재판정하지 말고 제공된 Stockfish 판정과 이유를 사실로 사용해 경기 전체의 흐름과 반복된 습관을 분석하세요.',
-      '사용자 관점은 playerColor입니다. 상대의 실수보다 사용자가 배우고 재현할 내용에 집중하세요.',
-      '핵심 장면은 최대 5개만 고르고 반드시 입력에 존재하는 ply와 san을 정확히 한 쌍으로 복사하세요.',
+      'moves에는 Stockfish가 선별한 사용자의 중요한 수만 있습니다. 상대 수에는 절대 코멘트를 만들지 마세요.',
+      'moves의 각 수마다 moment를 하나씩 작성하고 누락하거나 추가하지 마세요. moves가 비어 있으면 moments는 빈 배열로 두세요.',
+      '각 moment는 입력에 존재하는 ply와 san을 정확히 한 쌍으로 복사하세요.',
       '과장된 전술이나 입력에 없는 원인을 만들지 마세요.',
       '말투는 아래 coachStyle 지시를 가장 우선해서 따르세요.',
       context.coachStyle,
@@ -117,12 +160,14 @@
       '{"summary":"경기 총평 2~3문장","strengths":["잘한 점"],"weaknesses":["고칠 점"],"goals":["다음 경기 목표"],"moments":[{"ply":1,"san":"e4","title":"장면 제목","comment":"이 수에서 배울 점","innerThought":"짧은 반말 혼잣말"}]}',
       `경기 데이터: ${JSON.stringify(context)}`
     ].filter(Boolean).join('\n');
-    return {prompt, model:MODEL, temperature:TEMPERATURE, maxOutputTokens:MAX_OUTPUT_TOKENS};
+    const maxOutputTokens = Math.min(2048, Math.max(BASE_OUTPUT_TOKENS, 500 + moves.length * 180));
+    return {prompt, model:MODEL, temperature:TEMPERATURE, maxOutputTokens};
   }
 
   function parseResponse(text, sourceMoves, playerColor){
-    const moves = normalizeMoves(sourceMoves);
-    const decisiveMove = getDecisiveMove(moves, playerColor === 'b' ? 'b' : 'w');
+    const normalizedPlayerColor = playerColor === 'b' ? 'b' : 'w';
+    const moves = selectCriticalMoves(sourceMoves, normalizedPlayerColor);
+    const decisiveMove = getDecisiveMove(moves, normalizedPlayerColor);
     const source = String(text || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
     const start = source.indexOf('{');
     const end = source.lastIndexOf('}');
@@ -158,7 +203,7 @@
             comment,
             innerThought
           };
-        }).filter((moment) => moment && moment.comment).slice(0, 5) : [];
+        }).filter((moment) => moment && moment.comment) : [];
 
         if (decisiveMove){
           let decisiveMoment = moments.find((moment) => moment.ply === decisiveMove.ply && moment.san === decisiveMove.san);
@@ -172,8 +217,7 @@
                 : `${decisiveMove.san}에서 가장 큰 손실을 허용했네요.`),
               innerThought:''
             };
-            if (moments.length >= 5) moments[moments.length - 1] = decisiveMoment;
-            else moments.push(decisiveMoment);
+            moments.push(decisiveMoment);
           }
           if (!decisiveMoment.innerThought){
             decisiveMoment.innerThought = '결국 가장 중요한 순간에 이걸 고르네. 기대를 접는 게 빠르겠어.';
@@ -193,5 +237,5 @@
     return null;
   }
 
-  return {createRequest, getDecisiveMove, normalizeInnerThought, normalizeParentheticalThoughts, normalizeMoves, parseResponse};
+  return {createRequest, getDecisiveMove, normalizeInnerThought, normalizeParentheticalThoughts, normalizeMoves, parseResponse, selectCriticalMoves};
 });
