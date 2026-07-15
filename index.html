@@ -419,6 +419,7 @@ let stableHintAnalysis = {fen:null, lines:[]};
 let reviewPly = null;
 let aiGameReviewState = 'idle';
 let aiGameReviewResult = null;
+let aiGameReviewMeta = null;
 
 const COMMENTARY_MIN_DEPTH = 12;
 
@@ -1107,6 +1108,7 @@ function resetCommentaryHistory(){
   stableHintAnalysis = {fen:null, lines:[]};
   aiGameReviewState = 'idle';
   aiGameReviewResult = null;
+  aiGameReviewMeta = null;
   aiGameReviewPanel.hidden = true;
   aiGameReviewPanel.replaceChildren();
   syncCommentaryToReview();
@@ -1160,10 +1162,95 @@ function updateAIReviewButton(){
   aiGameReviewBtn.textContent = game.game_over() && !analysisReady ? '분석 준비 중...' : 'AI 전체 리뷰';
 }
 
+function getGameResultLabel(){
+  if (game.in_checkmate()) return game.turn() === 'w' ? '흑 승' : '백 승';
+  if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) return '무승부';
+  return '진행 중';
+}
+
+function buildReviewExportData(){
+  if (!aiGameReviewResult || aiGameReviewState !== 'done') return null;
+  const moves = getOrderedCommentaryEntries().map((entry) => ({
+    ply:entry.ply,
+    san:entry.san,
+    color:entry.analysis?.color || '',
+    stockfish:{
+      classification:entry.text?.title || entry.analysis?.classification?.label || '',
+      deltaCp:Number.isFinite(entry.analysis?.deltaCp) ? Math.round(entry.analysis.deltaCp) : null,
+      bestMove:entry.analysis?.bestMove || '',
+      reasons:Array.isArray(entry.text?.body) ? [...entry.text.body] : [],
+      expected:entry.text?.expected || '',
+      alternative:entry.text?.alternative || '',
+      rule:entry.analysis?.classification?.rule || '',
+      materialLoss:entry.analysis?.consequence?.materialLoss || 0,
+      mateAgainstMover:Boolean(entry.analysis?.consequence?.mateAgainstMover)
+    },
+    aiComment:entry.aiReviewNote ? {...entry.aiReviewNote} : null
+  }));
+  return {
+    schemaVersion:1,
+    app:'Chess Study',
+    exportedAt:new Date().toISOString(),
+    game:{
+      result:getGameResultLabel(),
+      pgn:game.pgn(),
+      finalFen:game.fen(),
+      moveCount:game.history().length,
+      playerColor,
+      playMode,
+      skill:playMode === 'engine' ? currentSkill : null
+    },
+    ai:{
+      model:aiGameReviewMeta?.model || '',
+      coachStyle:aiGameReviewMeta?.coachStyle || geminiCoachStyle,
+      createdAt:aiGameReviewMeta?.createdAt || ''
+    },
+    review:JSON.parse(JSON.stringify(aiGameReviewResult)),
+    moves
+  };
+}
+
+function exportCurrentReview(event){
+  const data = buildReviewExportData();
+  if (!data) return;
+  const button = event?.currentTarget;
+  try {
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.href = url;
+    link.download = `chess-review-${stamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (button){
+      button.textContent = '저장 완료';
+      setTimeout(() => { button.textContent = '리뷰 내보내기'; }, 1400);
+    }
+  } catch {
+    if (button){
+      button.textContent = '저장 실패';
+      setTimeout(() => { button.textContent = '리뷰 내보내기'; }, 1400);
+    }
+  }
+}
+
 function renderAIReviewSummary(result){
   aiGameReviewPanel.replaceChildren();
   aiGameReviewPanel.hidden = false;
-  appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-title', 'AI 경기 총평');
+  const header = document.createElement('div');
+  header.className = 'ai-game-review-header';
+  appendCommentaryLine(header, 'ai-game-review-title', 'AI 경기 총평');
+  const exportBtn = document.createElement('button');
+  exportBtn.className = 'ai-review-export-button';
+  exportBtn.type = 'button';
+  exportBtn.textContent = '리뷰 내보내기';
+  exportBtn.addEventListener('click', exportCurrentReview);
+  header.appendChild(exportBtn);
+  aiGameReviewPanel.appendChild(header);
   appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-summary', formatGameReviewText(result.summary));
   const sections = [
     ['잘한 점', result.strengths],
@@ -1226,7 +1313,7 @@ async function requestGeminiGameReview(){
   try {
     aiRequest = ChessAIReview.createRequest({
       playerColor,
-      result:game.in_checkmate() ? (game.turn() === 'w' ? '흑 승' : '백 승') : '무승부',
+      result:getGameResultLabel(),
       pgn:game.pgn(),
       moves:reviewMoves,
       coachStyle
@@ -1262,11 +1349,16 @@ async function requestGeminiGameReview(){
     const responseData = await response.json();
     const result = ChessAIReview.parseResponse(responseData.text, reviewMoves, playerColor);
     if (!result) throw new Error('invalid-review');
+    const usedModel = String(responseData.model || aiRequest.model || '').trim();
     aiGameReviewResult = result;
+    aiGameReviewMeta = {
+      model:usedModel,
+      coachStyle:geminiCoachStyle,
+      createdAt:new Date().toISOString()
+    };
     aiGameReviewState = 'done';
     applyAIReviewMoments(result);
     renderAIReviewSummary(result);
-    const usedModel = String(responseData.model || aiRequest.model || '').trim();
     setGeminiConnectionStatus(usedModel ? `Gemini 연결됨 · ${usedModel}` : 'Gemini 연결됨', 'success');
     setReviewPly(0);
     updateAIReviewButton();
