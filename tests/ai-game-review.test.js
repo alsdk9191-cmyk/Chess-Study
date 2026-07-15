@@ -19,6 +19,8 @@ const moves = [
   assert.ok(request.prompt.includes('억지 칭찬'));
   assert.ok(request.prompt.includes('괄호 안에서는 존댓말을 절대 쓰지 말고'));
   assert.ok(request.prompt.includes('"하십시오"'));
+  assert.ok(request.prompt.includes('summary에도 괄호 속마음을 최소 한 번'));
+  assert.ok(request.prompt.includes('딱딱한 명사형 항목'));
 }
 
 {
