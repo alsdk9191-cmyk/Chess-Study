@@ -6,8 +6,7 @@ The Gemini API key must never be placed in `index.html` or committed to GitHub.
 2. In the Worker's **Settings > Variables and Secrets**, add these production values:
    - Secret: `GEMINI_API_KEY` = Gemini API key
    - Variable: `ALLOWED_ORIGIN` = the GitHub Pages origin only, for example `https://your-github-name.github.io`
-   - Optional variable: `GEMINI_MODEL` = `gemini-2.5-flash`
 3. Deploy the Worker. Copy its `https://...workers.dev` address.
-4. Open the chess site. Under **AI 해설**, paste the Worker address and enable **Gemini 사용**. This is saved only in this browser.
+4. Set the Worker address in `ai-coach-config.js` and deploy the GitHub Pages site.
 
-The site keeps Stockfish as the source of move evaluation. Gemini only rewrites the confirmed Stockfish explanation in concise Korean. If the Worker or Gemini is unavailable, the Stockfish explanation remains visible.
+The Worker only protects the API key, validates the allowed origin, and forwards requests to Gemini. Prompts, model selection, response parsing, and review behavior live in `ai-game-review.js`, so future AI review changes require only a GitHub Pages deployment.

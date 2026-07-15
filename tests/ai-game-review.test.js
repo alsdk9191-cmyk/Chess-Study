@@ -1,0 +1,40 @@
+'use strict';
+
+const assert = require('assert');
+const review = require('../ai-game-review.js');
+
+const moves = [
+  {ply:1, san:'e4', color:'w'},
+  {ply:2, san:'d5', color:'b'},
+  {ply:3, san:'e5', color:'w'},
+  {ply:4, san:'Qd7', color:'b'},
+  {ply:5, san:'Ke2', color:'w'},
+  {ply:6, san:'f6', color:'b'}
+];
+
+{
+  const request = review.createRequest({playerColor:'w', result:'무승부', pgn:'1. e4 d5', moves});
+  assert.equal(request.model, 'gemini-2.5-flash-lite');
+  assert.ok(request.prompt.includes('ply와 san'));
+}
+
+{
+  const response = JSON.stringify({
+    summary:'총평', strengths:[], weaknesses:[], goals:[],
+    moments:[{ply:3, san:'Ke2', title:'킹 이동', comment:'중앙의 킹이 위험합니다.'}]
+  });
+  const result = review.parseResponse(response, moves);
+  assert.equal(result.moments[0].ply, 5, 'SAN이 유일하면 잘못된 ply를 실제 위치로 교정한다');
+  assert.equal(result.moments[0].san, 'Ke2');
+}
+
+{
+  const duplicateMoves = [...moves, {ply:7, san:'e5', color:'w'}];
+  const response = JSON.stringify({
+    summary:'총평', moments:[{ply:5, san:'e5', comment:'불확실한 장면'}]
+  });
+  const result = review.parseResponse(response, duplicateMoves);
+  assert.equal(result.moments.length, 0, '중복 SAN과 잘못된 ply 조합은 표시하지 않는다');
+}
+
+console.log('ai-game-review tests passed');

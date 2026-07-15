@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="ai-coach-config.js"></script>
+<script src="ai-game-review.js"></script>
 <script src="chess-analysis.js"></script>
 <link rel="stylesheet" href="chess.css">
 </head>
@@ -1013,7 +1014,9 @@ function renderAIReviewSummary(result){
 function applyAIReviewMoments(result){
   getOrderedCommentaryEntries().forEach((entry) => { delete entry.aiReviewNote; });
   (result.moments || []).forEach((moment) => {
-    const entry = getOrderedCommentaryEntries().find((candidate) => candidate.ply === Number(moment.ply));
+    const entry = getOrderedCommentaryEntries().find((candidate) => (
+      candidate.ply === Number(moment.ply) && candidate.san === String(moment.san || '')
+    ));
     if (entry) entry.aiReviewNote = [moment.title, moment.comment].filter(Boolean).join(' — ');
   });
 }
@@ -1029,6 +1032,30 @@ async function requestGeminiGameReview(){
   const entries = getOrderedCommentaryEntries();
   if (!entries.length || entries.some((entry) => !entry.analysis)) return;
   const coachStyle = AI_COACH_STYLES[geminiCoachStyle]?.instruction || AI_COACH_STYLES[DEFAULT_AI_COACH_STYLE]?.instruction || '';
+  const reviewMoves = entries.map((entry) => ({
+    ply:entry.ply,
+    san:entry.san,
+    color:entry.analysis.color,
+    classification:entry.text?.title || entry.analysis.classification?.label || '',
+    deltaCp:Number.isFinite(entry.analysis.deltaCp) ? Math.round(entry.analysis.deltaCp) : null,
+    bestMove:entry.analysis.bestMove || '',
+    reasons:Array.isArray(entry.text?.body) ? entry.text.body : [],
+    expected:entry.text?.expected || '',
+    alternative:entry.text?.alternative || ''
+  }));
+  let aiRequest;
+  try {
+    aiRequest = ChessAIReview.createRequest({
+      playerColor,
+      result:game.in_checkmate() ? (game.turn() === 'w' ? '흑 승' : '백 승') : '무승부',
+      pgn:game.pgn(),
+      moves:reviewMoves,
+      coachStyle
+    });
+  } catch {
+    setGeminiConnectionStatus('AI 리뷰 데이터를 만들지 못했습니다.', 'error');
+    return;
+  }
   aiGameReviewState = 'loading';
   updateAIReviewButton();
   setGeminiConnectionStatus('전체 경기를 리뷰하는 중...', '');
@@ -1037,24 +1064,7 @@ async function requestGeminiGameReview(){
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        mode:'gameReview',
-        playerColor,
-        result:game.in_checkmate() ? (game.turn() === 'w' ? '흑 승' : '백 승') : '무승부',
-        pgn:game.pgn(),
-        moves:entries.map((entry) => ({
-          ply:entry.ply,
-          san:entry.san,
-          color:entry.analysis.color,
-          classification:entry.text?.title || entry.analysis.classification?.label || '',
-          deltaCp:Number.isFinite(entry.analysis.deltaCp) ? Math.round(entry.analysis.deltaCp) : null,
-          bestMove:entry.analysis.bestMove || '',
-          reasons:Array.isArray(entry.text?.body) ? entry.text.body : [],
-          expected:entry.text?.expected || '',
-          alternative:entry.text?.alternative || ''
-        })),
-        coachStyle
-      })
+      body: JSON.stringify(aiRequest)
     });
     if (!response.ok){
       let detail = '';
@@ -1070,8 +1080,9 @@ async function requestGeminiGameReview(){
       return;
     }
 
-    const result = await response.json();
-    if (!result || typeof result.summary !== 'string') throw new Error('invalid-review');
+    const responseData = await response.json();
+    const result = ChessAIReview.parseResponse(responseData.text, reviewMoves);
+    if (!result) throw new Error('invalid-review');
     aiGameReviewResult = result;
     aiGameReviewState = 'done';
     applyAIReviewMoments(result);
