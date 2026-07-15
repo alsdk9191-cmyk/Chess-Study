@@ -14,8 +14,11 @@ const moves = [
 
 {
   const request = review.createRequest({playerColor:'w', result:'무승부', pgn:'1. e4 d5', moves});
-  assert.equal(request.model, 'gemini-2.5-flash-lite');
+  assert.equal(request.model, 'gemini-3.1-flash-lite');
   assert.ok(request.prompt.includes('ply와 san'));
+  assert.ok(request.prompt.includes('억지 칭찬'));
+  assert.ok(request.prompt.includes('괄호 안에서는 존댓말을 절대 쓰지 말고'));
+  assert.ok(request.prompt.includes('"하십시오"'));
 }
 
 {
