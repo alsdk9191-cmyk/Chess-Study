@@ -117,6 +117,14 @@
           <div class="ai-connection-status" id="geminiConnectionStatus" aria-live="polite"></div>
         </div>
 
+        <div class="field">
+          <label>해설 설정</label>
+          <label class="ai-toggle">
+            <input type="checkbox" id="opponentCommentaryToggle">
+            <span>상대 해설 사용</span>
+          </label>
+        </div>
+
         <div class="field" style="margin-bottom:0;">
           <label>내 진영</label>
           <div class="side-toggle">
@@ -154,7 +162,7 @@
     </div>
 
     <div class="commentary-box">
-      <div class="commentary-panel">
+      <div class="commentary-panel" id="whiteCommentaryPanel">
         <div class="commentary-head">
           <label>백 해설</label>
           <div class="commentary-nav">
@@ -165,7 +173,7 @@
         </div>
         <div class="commentary-text" id="whiteCommentaryText">백의 해설이 아직 없습니다.</div>
       </div>
-      <div class="commentary-panel">
+      <div class="commentary-panel" id="blackCommentaryPanel">
         <div class="commentary-head">
           <label>흑 해설</label>
           <div class="commentary-nav">
@@ -196,6 +204,7 @@ let legalTargets = [];
 let lastMove = null;
 let engineReady = false;
 let engineThinking = false;
+let opponentCommentaryEnabled = false;
 let currentSkill = 8;
 let currentDiff = getDifficultyConfig(currentSkill);
 let engine;
@@ -233,6 +242,7 @@ const boardThemeEl = document.getElementById('boardTheme');
 const backgroundThemeEl = document.getElementById('backgroundTheme');
 const geminiCoachStyleEl = document.getElementById('geminiCoachStyle');
 const geminiConnectionStatusEl = document.getElementById('geminiConnectionStatus');
+const opponentCommentaryToggleEl = document.getElementById('opponentCommentaryToggle');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
 const reviewNextBtn = document.getElementById('reviewNextBtn');
 const reviewStatusEl = document.getElementById('reviewStatus');
@@ -241,6 +251,7 @@ const aiGameReviewPanel = document.getElementById('aiGameReviewPanel');
 const mobileCommentaryEl = document.getElementById('mobileCommentary');
 const commentaryViews = {
   w: {
+    panelEl: document.getElementById('whiteCommentaryPanel'),
     textEl: document.getElementById('whiteCommentaryText'),
     countEl: document.getElementById('whiteCommentaryCount'),
     prevBtn: document.getElementById('whitePrevBtn'),
@@ -248,6 +259,7 @@ const commentaryViews = {
     emptyText: '백의 해설이 아직 없습니다.'
   },
   b: {
+    panelEl: document.getElementById('blackCommentaryPanel'),
     textEl: document.getElementById('blackCommentaryText'),
     countEl: document.getElementById('blackCommentaryCount'),
     prevBtn: document.getElementById('blackPrevBtn'),
@@ -353,7 +365,8 @@ function saveUserSettings(){
       pieceTheme: currentPieceTheme,
       boardTheme: currentBoardTheme,
       backgroundTheme: currentBackgroundTheme,
-      geminiCoachStyle
+      geminiCoachStyle,
+      opponentCommentaryEnabled
     }));
   } catch {
     // Some browser privacy modes disable local storage; the game still works normally.
@@ -371,6 +384,7 @@ function restoreUserSettings(){
     if (BOARD_THEME_IDS.has(saved.boardTheme)) currentBoardTheme = saved.boardTheme;
     if (BACKGROUND_THEME_IDS.has(saved.backgroundTheme)) currentBackgroundTheme = saved.backgroundTheme;
     if (typeof saved.geminiCoachStyle === 'string' && saved.geminiCoachStyle in AI_COACH_STYLES) geminiCoachStyle = saved.geminiCoachStyle;
+    opponentCommentaryEnabled = saved.opponentCommentaryEnabled === true;
   } catch {
     // Ignore invalid or old saved settings and keep the defaults.
   }
@@ -382,6 +396,7 @@ function restoreUserSettings(){
     .map(([id, style]) => `<option value="${id}">${style.label}</option>`)
     .join('');
   geminiCoachStyleEl.value = geminiCoachStyle;
+  syncOpponentCommentaryUi();
   refreshGeminiConnectionStatus();
   document.documentElement.dataset.boardTheme = currentBoardTheme === 'wood' ? '' : currentBoardTheme;
   document.documentElement.dataset.backgroundTheme = currentBackgroundTheme === 'white' ? '' : currentBackgroundTheme;
@@ -989,6 +1004,27 @@ function renderAllCommentaryPanels(){
   renderCommentaryPanel('b');
 }
 
+function syncOpponentCommentaryUi(){
+  opponentCommentaryToggleEl.checked = opponentCommentaryEnabled;
+  ['w','b'].forEach((color) => {
+    commentaryViews[color].panelEl.hidden = !opponentCommentaryEnabled && color !== playerColor;
+  });
+}
+
+function setOpponentCommentaryEnabled(enabled){
+  opponentCommentaryEnabled = Boolean(enabled);
+  if (!opponentCommentaryEnabled){
+    const opponentColor = playerColor === 'w' ? 'b' : 'w';
+    commentaryHistory[opponentColor] = [];
+    commentaryIndex[opponentColor] = -1;
+    pendingCommentaries = pendingCommentaries.filter((pending) => pending.color === playerColor);
+  }
+  syncOpponentCommentaryUi();
+  renderAllCommentaryPanels();
+  updateAIReviewButton();
+  saveUserSettings();
+}
+
 function getCurrentPly(){
   return game.history().length;
 }
@@ -1243,6 +1279,7 @@ async function requestGeminiGameReview(){
 
 function queueMoveCommentary(move, prevFen){
   const color = move.color;
+  if (!opponentCommentaryEnabled && color !== playerColor) return;
   latestEval = null;
   renderEvaluationText();
   const entry = {
@@ -1761,6 +1798,7 @@ document.getElementById('playMode').addEventListener('change', (e) => {
     sideBlackEl.classList.remove('active');
   }
 
+  syncOpponentCommentaryUi();
   resetGame();
 });
 
@@ -1802,6 +1840,9 @@ geminiCoachStyleEl.addEventListener('change', (e) => {
   saveUserSettings();
 });
 
+opponentCommentaryToggleEl.addEventListener('change', (e) => {
+  setOpponentCommentaryEnabled(e.target.checked);
+});
 
 hintToggleEl.addEventListener('change', updateHintDisplay);
 opponentHintToggleEl.addEventListener('change', updateHintDisplay);
@@ -1840,6 +1881,7 @@ document.getElementById('sideBlack').addEventListener('click', () => setPlayerCo
 function setPlayerColor(c){
   playerColor = c;
   clearMoveAnimation();
+  syncOpponentCommentaryUi();
   document.getElementById('sideWhite').classList.toggle('active', c==='w');
   document.getElementById('sideBlack').classList.toggle('active', c==='b');
   resetGame();

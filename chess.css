@@ -544,6 +544,8 @@
   .commentary-panel + .commentary-panel{
     margin-top:14px;
   }
+  .commentary-panel[hidden]{display:none;}
+  .commentary-panel[hidden] + .commentary-panel{margin-top:0;}
   .commentary-head{
     display:flex;
     align-items:center;
