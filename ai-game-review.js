@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function(){
   'use strict';
 
-  const MODEL = 'gemini-2.5-flash-lite';
+  const MODEL = 'gemini-3.1-flash-lite';
   const TEMPERATURE = 1.0;
   const MAX_OUTPUT_TOKENS = 1000;
   const MAX_TEXT_LENGTH = 700;
