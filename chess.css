@@ -321,6 +321,11 @@
     font-size:17px;
     letter-spacing:-.08em;
   }
+  .review-bar .review-step{
+    padding-bottom:2px;
+    font-size:27px;
+    font-family:Georgia,serif;
+  }
   .review-bar .ai-review-button{
     width:auto;
     min-width:112px;
