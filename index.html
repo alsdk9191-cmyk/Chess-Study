@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="ai-coach-config.js"></script>
+<script src="chess-analysis.js"></script>
 <link rel="stylesheet" href="chess.css">
 </head>
 <body>
@@ -205,8 +206,16 @@ let engineThinking = false;
 let currentSkill = 8;
 let currentDiff = getDifficultyConfig(currentSkill);
 let engine;
+let analysisEngine;
+let engineWorkerUrl = '';
 let engineTimeoutId;
 let waitingFor = 'uciok'; // 상단에 명확하게 선언하여 변수 초기화 전 참조 에러 해결
+let analysisWaitingFor = 'uciok';
+let analysisEngineReady = false;
+let analysisGeneration = 0;
+let analysisQueue = [];
+let activeAnalysisJob = null;
+let analysisCache = new Map();
 let pendingAnimation = null;
 let animationToken = 0;
 
@@ -407,7 +416,7 @@ const CAPTURE_ORDER = ['q','r','b','n','p'];
 const PIECE_VALUES = {p:1, n:3, b:3, r:5, q:9, k:0};
 
 let latestEval = null;
-let pendingCommentary = null;
+let pendingCommentaries = [];
 let commentaryHistory = {w:[], b:[]};
 let commentaryIndex = {w:-1, b:-1};
 let latestAnalysis = {fen:null, lines:[]};
@@ -463,7 +472,9 @@ function loadEngine(){
     .then(code => {
       log('스크립트 수신 완료 (' + code.length + ' bytes)');
       const blob = new Blob([code], {type:'application/javascript'});
-      engine = new Worker(URL.createObjectURL(blob));
+      engineWorkerUrl = URL.createObjectURL(blob);
+      engine = new Worker(engineWorkerUrl);
+      startAnalysisEngine();
 
       engineTimeoutId = setTimeout(() => {
         log('15초 동안 응답 없음 — 엔진 초기화 실패로 판단');
@@ -508,6 +519,20 @@ function hideRetry(){
   if (btn) btn.remove();
 }
 
+function startAnalysisEngine(){
+  if (!engineWorkerUrl) return;
+  if (analysisEngine) analysisEngine.terminate();
+  analysisEngine = new Worker(engineWorkerUrl);
+  analysisEngineReady = false;
+  analysisWaitingFor = 'uciok';
+  activeAnalysisJob = null;
+  analysisEngine.onmessage = onAnalysisEngineMessage;
+  analysisEngine.onerror = () => {
+    analysisEngineReady = false;
+  };
+  analysisEngine.postMessage('uci');
+}
+
 function onEngineMessage(e){
   if (engineTimeoutId) clearTimeout(engineTimeoutId);
   const line = typeof e.data === 'string' ? e.data : '';
@@ -528,29 +553,12 @@ function onEngineMessage(e){
     return;
   }
 
-  // 실시간 수 평가 데이터 파싱 (info score cp / mate)
-  if (line.startsWith('info ') && line.includes(' score ')) {
-    const parts = line.split(' ');
-    const scoreIdx = parts.indexOf('score');
-    const depthIdx = parts.indexOf('depth');
-    const depth = depthIdx !== -1 ? parseInt(parts[depthIdx + 1], 10) : 0;
-    if (scoreIdx !== -1 && scoreIdx + 2 < parts.length) {
-      const type = parts[scoreIdx + 1]; // 'cp' 또는 'mate'
-      const val = parseInt(parts[scoreIdx + 2], 10);
-      if (!isNaN(val)) {
-        updateAnalysisLinesFromInfo(parts);
-        updateEvaluationDisplay(type, val, depth);
-      }
-    }
-  }
-
   if (line.startsWith('bestmove')){
     const parts = line.split(' ');
     const uciMove = parts[1];
     
     if (engineThinking) {
       engineThinking = false;
-      finalizePendingCommentary();
       if (uciMove && uciMove !== '(none)'){
         applyUciMove(uciMove);
       }
@@ -589,50 +597,130 @@ function formatUciAsSan(fen, uci){
   }
 }
 
-function updateAnalysisLinesFromInfo(parts){
+function parseAnalysisLine(parts, fen){
   const pvIdx = parts.indexOf('pv');
-  if (pvIdx === -1 || pvIdx + 1 >= parts.length) return;
+  if (pvIdx === -1 || pvIdx + 1 >= parts.length) return null;
 
   const scoreIdx = parts.indexOf('score');
-  if (scoreIdx === -1 || scoreIdx + 2 >= parts.length) return;
+  if (scoreIdx === -1 || scoreIdx + 2 >= parts.length) return null;
 
   const multiPvIdx = parts.indexOf('multipv');
   const multipv = multiPvIdx !== -1 ? parseInt(parts[multiPvIdx + 1], 10) : 1;
   const pvMoves = parts.slice(pvIdx + 1).filter(Boolean);
   const bestUci = pvMoves[0];
-  if (!bestUci) return;
+  if (!bestUci) return null;
 
   const type = parts[scoreIdx + 1];
   const rawValue = parseInt(parts[scoreIdx + 2], 10);
-  if (Number.isNaN(rawValue)) return;
+  if (Number.isNaN(rawValue)) return null;
 
   let scoreW = rawValue;
-  if (game.turn() === 'b') scoreW = -scoreW;
+  if (String(fen).split(/\s+/)[1] === 'b') scoreW = -scoreW;
 
-  const line = {
+  return {
     multipv,
     uci: bestUci,
-    san: formatUciAsSan(game.fen(), bestUci) || bestUci,
-    // Four full moves are enough to expose most short tactical consequences at depth 12.
-    pv: pvMoves.slice(0, 8),
+    san: formatUciAsSan(fen, bestUci) || bestUci,
+    pv: pvMoves.slice(0, 10),
     type,
     scoreW,
     depth: parseInt(parts[parts.indexOf('depth') + 1], 10) || 0
   };
+}
 
-  latestAnalysis.fen = game.fen();
-  latestAnalysis.lines = latestAnalysis.lines.filter((item) => item.multipv !== multipv);
-  latestAnalysis.lines.push(line);
-  latestAnalysis.lines.sort((a, b) => a.multipv - b.multipv);
-  latestAnalysis.lines = latestAnalysis.lines.slice(0, 3);
-
-  if (line.type === 'mate' || line.depth >= COMMENTARY_MIN_DEPTH){
-    stableHintAnalysis.fen = game.fen();
-    stableHintAnalysis.lines = stableHintAnalysis.lines.filter((item) => item.multipv !== multipv);
-    stableHintAnalysis.lines.push({...line});
-    stableHintAnalysis.lines.sort((a, b) => a.multipv - b.multipv);
-    stableHintAnalysis.lines = stableHintAnalysis.lines.slice(0, 3);
+function commitPositionAnalysis(result){
+  analysisCache.set(result.fen, result);
+  if (game.fen() === result.fen){
+    latestAnalysis = {fen:result.fen, lines:result.lines.map((line) => ({...line, pv:[...line.pv]}))};
+    stableHintAnalysis = snapshotAnalysis();
+    latestEval = result.eval ? {...result.eval, fen:result.fen} : null;
     updateHintDisplay();
+    renderEvaluationText();
+  }
+  finalizeReadyCommentaries();
+}
+
+function pumpAnalysisQueue(){
+  if (!analysisEngineReady || activeAnalysisJob || !analysisQueue.length) return;
+  activeAnalysisJob = analysisQueue.shift();
+  activeAnalysisJob.lines = [];
+  analysisEngine.postMessage('position fen ' + activeAnalysisJob.fen);
+  analysisEngine.postMessage('go depth ' + COMMENTARY_MIN_DEPTH);
+}
+
+function enqueuePositionAnalysis(fen){
+  if (!fen || analysisCache.has(fen)){
+    if (fen && analysisCache.has(fen)) commitPositionAnalysis(analysisCache.get(fen));
+    return;
+  }
+  try {
+    const position = new Chess(fen);
+    if (position.in_checkmate()){
+      const winner = position.turn() === 'w' ? 'b' : 'w';
+      commitPositionAnalysis({
+        fen,
+        lines:[],
+        eval:{type:'mate', scoreW:winner === 'w' ? 1 : -1, depth:COMMENTARY_MIN_DEPTH, fen}
+      });
+      return;
+    }
+    if (position.in_draw()){
+      commitPositionAnalysis({
+        fen,
+        lines:[],
+        eval:{type:'cp', scoreW:0, depth:COMMENTARY_MIN_DEPTH, fen}
+      });
+      return;
+    }
+  } catch {
+    return;
+  }
+  if (activeAnalysisJob?.fen === fen || analysisQueue.some((job) => job.fen === fen)) return;
+  analysisQueue.push({fen, generation:analysisGeneration, lines:[]});
+  pumpAnalysisQueue();
+}
+
+function onAnalysisEngineMessage(e){
+  const line = typeof e.data === 'string' ? e.data : '';
+  if (analysisWaitingFor === 'uciok' && line === 'uciok'){
+    analysisEngine.postMessage('setoption name Skill Level value 20');
+    analysisEngine.postMessage('setoption name MultiPV value 3');
+    analysisEngine.postMessage('isready');
+    analysisWaitingFor = 'readyok';
+    return;
+  }
+  if (analysisWaitingFor === 'readyok' && line === 'readyok'){
+    analysisEngineReady = true;
+    analysisWaitingFor = null;
+    analysisEngine.postMessage('ucinewgame');
+    pumpAnalysisQueue();
+    return;
+  }
+  if (!activeAnalysisJob) return;
+
+  if (line.startsWith('info ') && line.includes(' score ')){
+    const parsed = parseAnalysisLine(line.split(' '), activeAnalysisJob.fen);
+    if (!parsed) return;
+    activeAnalysisJob.lines = activeAnalysisJob.lines.filter((item) => item.multipv !== parsed.multipv);
+    activeAnalysisJob.lines.push(parsed);
+    activeAnalysisJob.lines.sort((a, b) => a.multipv - b.multipv);
+    activeAnalysisJob.lines = activeAnalysisJob.lines.slice(0, 3);
+    return;
+  }
+
+  if (line.startsWith('bestmove')){
+    const completed = activeAnalysisJob;
+    activeAnalysisJob = null;
+    const stableLines = completed.lines.filter((item) => item.type === 'mate' || item.depth >= COMMENTARY_MIN_DEPTH);
+    if (completed.generation === analysisGeneration && stableLines.length){
+      const best = stableLines.find((item) => item.multipv === 1) || stableLines[0];
+      commitPositionAnalysis({
+        fen:completed.fen,
+        lines:stableLines.map((item) => ({...item, pv:[...item.pv]})),
+        eval:{type:best.type, scoreW:best.scoreW, depth:best.depth, fen:completed.fen}
+      });
+    }
+    pumpAnalysisQueue();
   }
 }
 
@@ -647,7 +735,7 @@ function formatEvalForText(evalInfo){
 }
 
 function getHintMove(){
-  if (!shouldShowHint() || !stableHintAnalysis.lines.length) return null;
+  if (!shouldShowHint() || stableHintAnalysis.fen !== game.fen() || !stableHintAnalysis.lines.length) return null;
   const best = stableHintAnalysis.lines[0];
   if (!best || !best.uci || best.uci.length < 4) return null;
   const from = best.uci.slice(0,2);
@@ -682,7 +770,7 @@ function updateHintDisplay(){
     return;
   }
 
-  if (!stableHintAnalysis.lines.length){
+  if (stableHintAnalysis.fen !== game.fen() || !stableHintAnalysis.lines.length){
     hintTextEl.textContent = `엔진이 depth ${COMMENTARY_MIN_DEPTH}까지 분석 중입니다.`;
     render();
     return;
@@ -699,347 +787,9 @@ function updateHintDisplay(){
   render();
 }
 
-function classifyMoveDelta(delta){
-  if (delta >= 140) return {label:'최선', tone:'좋은'};
-  if (delta >= 70) return {label:'정확한 수', tone:'좋은'};
-  if (delta >= 15) return {label:'좋은 수', tone:'좋은'};
-  if (delta >= -45) return {label:'무난한 수', tone:'중립'};
-  if (delta >= -110) return {label:'부정확', tone:'나쁜'};
-  if (delta >= -260) return {label:'실수', tone:'나쁜'};
-  return {label:'블런더', tone:'나쁜'};
-}
-
-function isPrincipledOpeningMove(move, prevFen){
-  try {
-    new Chess(prevFen);
-    const fullmove = parseInt(prevFen.split(/\s+/)[5], 10);
-    if (!Number.isFinite(fullmove) || fullmove > 8) return false;
-  } catch {
-    return false;
-  }
-
-  if (['d4','e4','d5','e5','c4','c5','Nf3','Nc3','Nf6','Nc6','g3','g6','b3','b6'].includes(move.san)) return true;
-  if (['d4','e4','d5','e5','c4','c5'].includes(move.to)) return true;
-  if ((move.piece === 'n' || move.piece === 'b') && ['1','8'].includes(move.from[1])) return true;
-  return false;
-}
-
-function describeEvalSwing(delta){
-  const pawns = Math.abs(cpToPawns(delta)).toFixed(2);
-  if (delta >= 0) return `평가 +${pawns}폰`;
-  return `평가 -${pawns}폰`;
-}
-
-function getMaterialBalance(position, perspective){
-  let balance = 0;
-  for (const file of 'abcdefgh'){
-    for (let rank = 1; rank <= 8; rank += 1){
-      const piece = position.get(file + rank);
-      if (!piece) continue;
-      const value = PIECE_VALUES[piece.type] || 0;
-      balance += piece.color === perspective ? value : -value;
-    }
-  }
-  return balance;
-}
-
-function analyzePvConsequences(fen, pv, moverColor){
-  if (!fen || !Array.isArray(pv) || !pv.length) return null;
-  try {
-    const position = new Chess(fen);
-    const initialBalance = getMaterialBalance(position, moverColor);
-    const sequence = [];
-    let firstReply = null;
-
-    for (const uci of pv.slice(0, 8)){
-      const move = position.move({
-        from: uci.slice(0, 2),
-        to: uci.slice(2, 4),
-        promotion: uci.length > 4 ? uci[4] : undefined
-      });
-      if (!move) break;
-      sequence.push(move.san);
-      if (!firstReply) firstReply = move;
-      if (move.san.includes('#')) break;
-    }
-
-    const materialLoss = initialBalance - getMaterialBalance(position, moverColor);
-    const firstReplyLoss = firstReply && firstReply.color !== moverColor && firstReply.captured
-      ? PIECE_VALUES[firstReply.captured] || 0
-      : 0;
-    return {
-      sequence,
-      materialLoss,
-      firstReplyLoss,
-      firstReplySan: firstReply ? firstReply.san : '',
-      endsInMate: sequence.some((san) => san.includes('#'))
-    };
-  } catch {
-    return null;
-  }
-}
-
-function getSquareFromCoords(file, rank){
-  return file >= 0 && file < 8 && rank >= 0 && rank < 8
-    ? 'abcdefgh'[file] + String(rank + 1)
-    : null;
-}
-
-function getDirectAttackSquares(position, square){
-  const piece = position.get(square);
-  if (!piece) return [];
-  const file = 'abcdefgh'.indexOf(square[0]);
-  const rank = parseInt(square[1], 10) - 1;
-  const squares = [];
-  const add = (df, dr) => {
-    const target = getSquareFromCoords(file + df, rank + dr);
-    if (target) squares.push(target);
-  };
-
-  if (piece.type === 'p'){
-    const direction = piece.color === 'w' ? 1 : -1;
-    add(-1, direction);
-    add(1, direction);
-    return squares;
-  }
-  if (piece.type === 'n'){
-    [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]].forEach(([df, dr]) => add(df, dr));
-    return squares;
-  }
-  if (piece.type === 'k'){
-    [[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]].forEach(([df, dr]) => add(df, dr));
-    return squares;
-  }
-
-  const directions = piece.type === 'b'
-    ? [[1,1],[1,-1],[-1,1],[-1,-1]]
-    : piece.type === 'r'
-      ? [[1,0],[-1,0],[0,1],[0,-1]]
-      : [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
-  directions.forEach(([df, dr]) => {
-    for (let step = 1; step < 8; step += 1){
-      const target = getSquareFromCoords(file + df * step, rank + dr * step);
-      if (!target) break;
-      squares.push(target);
-      if (position.get(target)) break;
-    }
-  });
-  return squares;
-}
-
-function getPieceName(type){
-  return ({p:'폰', n:'나이트', b:'비숍', r:'룩', q:'퀸', k:'킹'})[type] || '기물';
-}
-
-function getDirectAttackTargets(position, square, defenderColor){
-  return getDirectAttackSquares(position, square)
-    .map((targetSquare) => ({square:targetSquare, piece:position.get(targetSquare)}))
-    .filter((target) => target.piece && target.piece.color === defenderColor && target.piece.type !== 'k')
-    .sort((a, b) => (PIECE_VALUES[b.piece.type] || 0) - (PIECE_VALUES[a.piece.type] || 0));
-}
-
-function analyzeNextMoveThreat(fen, pv, defenderColor){
-  if (!fen || !Array.isArray(pv) || !pv.length) return null;
-  try {
-    const position = new Chess(fen);
-    const uci = pv[0];
-    const reply = position.move({
-      from: uci.slice(0, 2),
-      to: uci.slice(2, 4),
-      promotion: uci.length > 4 ? uci[4] : undefined
-    });
-    if (!reply) return null;
-    const targets = getDirectAttackTargets(position, reply.to, defenderColor);
-    if (!targets.length) return null;
-    const target = targets[0];
-    return {
-      replySan: reply.san,
-      square: target.square,
-      pieceName: getPieceName(target.piece.type),
-      value: PIECE_VALUES[target.piece.type] || 0
-    };
-  } catch {
-    return null;
-  }
-}
-
-function analyzeImmediateForkThreat(fen, pv, defenderColor){
-  if (!fen || !Array.isArray(pv) || pv.length < 2) return null;
-  try {
-    const position = new Chess(fen);
-    const initialBalance = getMaterialBalance(position, position.turn());
-    let candidate = null;
-    let targets = [];
-
-    // A fork is only worth mentioning when it is Stockfish's best continuation.
-    for (const [ply, uci] of pv.slice(0, 8).entries()){
-      const move = position.move({
-        from: uci.slice(0, 2),
-        to: uci.slice(2, 4),
-        promotion: uci.length > 4 ? uci[4] : undefined
-      });
-      if (!move) return null;
-      if (ply === 0){
-        candidate = move;
-        targets = getDirectAttackTargets(position, move.to, defenderColor)
-          .filter((target) => (PIECE_VALUES[target.piece.type] || 0) >= 3);
-        if (targets.length < 2) return null;
-      }
-    }
-
-    const materialGain = getMaterialBalance(position, candidate.color) - initialBalance;
-    // Do not surface geometric forks that vanish after the opponent's best reply.
-    if (materialGain < 1) return null;
-
-    return {
-      replySan: candidate.san,
-      targets: targets.map((target) => ({
-        square: target.square,
-        pieceName: getPieceName(target.piece.type),
-        value: PIECE_VALUES[target.piece.type] || 0
-      })),
-      value: targets.reduce((total, target) => total + (PIECE_VALUES[target.piece.type] || 0), 0),
-      materialGain,
-      isFork: true
-    };
-  } catch {
-    return null;
-  }
-}
-
-function getMoveFeatureText(move, predictedThreat){
-  if (predictedThreat && predictedThreat.isFork){
-    const targets = predictedThreat.targets.map((target) => `${target.square}의 ${target.pieceName}`).join('와 ');
-    return `${predictedThreat.replySan}로 ${targets} 포크가 가능합니다.`;
-  }
-  if (predictedThreat) return `${predictedThreat.replySan}로 ${predictedThreat.square}의 ${predictedThreat.pieceName}이 공격받습니다.`;
-  if (move.san.includes('#')) return '메이트를 만들었습니다.';
-  if (move.flags.includes('p')) return '프로모션으로 전력이 늘었습니다.';
-  if (move.flags.includes('k') || move.flags.includes('q')) return '캐슬링으로 킹을 안전하게 했습니다.';
-  if (move.captured){
-    const gain = PIECE_VALUES[move.captured] || 0;
-    return gain >= 5
-      ? '큰 기물을 얻었습니다.'
-      : '기물을 얻었습니다.';
-  }
-  if (move.san.includes('+')) return '체크로 선택지를 줄였습니다.';
-  if (['d4','e4','d5','e5'].includes(move.to)) return '중앙을 장악했습니다.';
-  if ((move.piece === 'n' || move.piece === 'b') && ['1','8'].includes(move.from[1])) return '기물을 전개했습니다.';
-  return '큰 전술 변화는 없습니다.';
-}
-
-function getLearningPoint(move, consequence){
-  if (consequence && consequence.endsInMate) return '상대 체크를 먼저 확인하세요.';
-  if (consequence && consequence.materialLoss >= 3) return '체크, 잡기, 공격 순으로 보세요.';
-  if (move.piece === 'p') return '폰 전진 뒤 약점을 확인하세요.';
-  if (move.piece === 'n' || move.piece === 'b') return '이동 뒤 기물 방어를 확인하세요.';
-  if (move.piece === 'q' || move.piece === 'r') return '상대 템포 공격을 확인하세요.';
-  if (move.piece === 'k') return '체크와 탈출 칸을 확인하세요.';
-  return '';
-}
-
-function getMoveAdviceText(move, delta, nextEval, analysisSnapshot, prevFen, consequence, predictedThreat){
-  if (nextEval && nextEval.type === 'mate'){
-    return nextEval.scoreW > 0
-      ? '백의 공격이 결정적입니다.'
-      : '흑의 공격이 결정적입니다.';
-  }
-
-  const alternatives = getAlternativeMoveText(analysisSnapshot, prevFen, move);
-  if (predictedThreat && predictedThreat.isFork){
-    const targets = predictedThreat.targets.map((target) => `${target.square}의 ${target.pieceName}`).join('와 ');
-    return `${predictedThreat.replySan}로 ${targets} 포크가 있습니다. 막아야 합니다.`;
-  }
-  if (predictedThreat && predictedThreat.value >= 3){
-    return `${predictedThreat.replySan} 뒤 ${predictedThreat.square}의 ${predictedThreat.pieceName}이 공격받습니다.`;
-  }
-  if (consequence && consequence.endsInMate && delta < 0){
-    return '강제 메이트를 허용했습니다.';
-  }
-  if (consequence && consequence.materialLoss >= 3 && delta <= -35){
-    const direct = consequence.firstReplyLoss >= 3 && consequence.firstReplySan
-      ? `상대의 ${consequence.firstReplySan} 이후`
-      : '엔진의 예상 수순대로 진행하면';
-    return `${direct} 기물 약 ${consequence.materialLoss}점 손해입니다.`;
-  }
-  if (delta <= -220){
-    return alternatives
-      ? `${alternatives}가 훨씬 안전했습니다.`
-      : '상대 전술을 허용했습니다.';
-  }
-  if (delta <= -95){
-    return alternatives
-      ? `${alternatives}가 더 안전했습니다.`
-      : '더 안전한 수가 있었습니다.';
-  }
-  if (delta <= -35){
-    return alternatives
-      ? `${alternatives}가 더 정확했습니다.`
-      : '조금 더 정확한 수가 있었습니다.';
-  }
-  if (move.captured) return '교환 뒤 약점과 체크를 보세요.';
-  if (move.flags.includes('k') || move.flags.includes('q')) return '중앙과 열린 파일을 활용하세요.';
-  if (move.san.includes('+')) return '킹의 탈출 칸을 보세요.';
-  if (alternatives && delta >= 70) return `${alternatives}와 같은 좋은 방향입니다.`;
-  return '';
-}
-
-function getAlternativeMoveText(analysisSnapshot, prevFen, move){
-  if (!analysisSnapshot || !analysisSnapshot.lines || !analysisSnapshot.lines.length) return '';
-  const moveUci = move.from + move.to + (move.promotion || '');
-  const alternatives = analysisSnapshot.lines
-    .filter((line) => line.uci !== moveUci)
-    .slice(0, 2)
-    .map((line) => line.san || formatUciAsSan(prevFen || analysisSnapshot.fen, line.uci) || line.uci);
-  if (!alternatives.length) return '';
-  return alternatives.length === 1
-    ? `${alternatives[0]}`
-    : `${alternatives[0]} 또는 ${alternatives[1]}`;
-}
-
-function buildMoveCommentary(move, prevEval, nextEval, analysisSnapshot, prevFen, replySnapshot){
-  if (!move) return '해설을 준비 중입니다.';
-  if (!nextEval){
-    return '분석 중…';
-  }
-
-  const prevScoreW = prevEval ? prevEval.scoreW : 0;
-  const nextScoreW = nextEval.scoreW;
-  const deltaForMover = move.color === 'w'
-    ? nextScoreW - prevScoreW
-    : prevScoreW - nextScoreW;
-  const replyLine = replySnapshot && replySnapshot.fen === game.fen()
-    ? replySnapshot.lines.find((line) => line.multipv === 1)
-    : null;
-  const consequence = analyzePvConsequences(game.fen(), replyLine ? replyLine.pv : [], move.color);
-  const predictedThreat = analyzeImmediateForkThreat(game.fen(), replyLine ? replyLine.pv : [], move.color)
-    || analyzeNextMoveThreat(game.fen(), replyLine ? replyLine.pv : [], move.color);
-  let summary = classifyMoveDelta(deltaForMover);
-  if (isPrincipledOpeningMove(move, prevFen)
-      && (summary.label === '실수' || summary.label === '블런더')
-      && (!consequence || consequence.materialLoss < 3)
-      && !(consequence && consequence.endsInMate)){
-    summary = {label:'무난한 수', tone:'중립'};
-  }
-  if (predictedThreat && predictedThreat.value >= 3 && deltaForMover < 15
-      && (summary.label === '무난한 수' || summary.label === '좋은 수')){
-    summary = {label:'부정확', tone:'나쁜'};
-  }
-  const feature = getMoveFeatureText(move, predictedThreat);
-  const advice = getMoveAdviceText(move, deltaForMover, nextEval, analysisSnapshot, prevFen, consequence, predictedThreat);
-  const alternatives = getAlternativeMoveText(analysisSnapshot, prevFen, move);
-  const learningPoint = getLearningPoint(move, deltaForMover <= -35 ? consequence : null);
-  return {
-    title: summary.label,
-    body: [
-      advice || feature,
-      learningPoint && deltaForMover < 15 ? learningPoint : ''
-    ].filter(Boolean),
-    expected: consequence && consequence.sequence.length
-      ? consequence.sequence.slice(0, 4).join(' ')
-      : '',
-    alternative: alternatives && deltaForMover < 15 ? alternatives : ''
-  };
+function buildMoveCommentary(record){
+  if (!record) return '분석 중…';
+  return ChessCoachAnalysis.buildCommentary(record);
 }
 
 function appendCommentaryLine(parent, className, text){
@@ -1195,7 +945,12 @@ function setReviewPly(nextPly){
 function resetCommentaryHistory(){
   commentaryHistory = {w:[], b:[]};
   commentaryIndex = {w:-1, b:-1};
-  pendingCommentary = null;
+  pendingCommentaries = [];
+  analysisGeneration += 1;
+  analysisQueue = [];
+  activeAnalysisJob = null;
+  analysisCache = new Map();
+  if (engineWorkerUrl) startAnalysisEngine();
   latestAnalysis = {fen:null, lines:[]};
   stableHintAnalysis = {fen:null, lines:[]};
   syncCommentaryToReview();
@@ -1254,6 +1009,7 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
         evaluation: formatEvalForText(nextEval),
         classification: content.title,
         stockfishReason: content.body || [],
+        facts: content.facts || {},
         expected: content.expected || '',
         alternative: content.alternative || '',
         coachStyle
@@ -1275,7 +1031,7 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
     if (!Array.isArray(result.body) || !result.body.length) return;
 
     const currentEntry = commentaryHistory[color][index];
-    if (!currentEntry || currentEntry.ply !== entry.ply) return;
+    if (currentEntry !== entry) return;
     currentEntry.text = {
       ...content,
       body: result.body.slice(0, 2).map((line) => String(line).trim()).filter(Boolean)
@@ -1290,48 +1046,69 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
 
 function queueMoveCommentary(move, prevFen){
   const color = move.color;
-  commentaryHistory[color].push({
+  latestEval = null;
+  renderEvaluationText();
+  const entry = {
     ply: game.history().length,
     san: move.san,
     text: move.san.includes('#')
       ? '체크메이트'
-      : '분석 중…'
-  });
+      : '분석 중…',
+    analysis:null
+  };
+  commentaryHistory[color].push(entry);
   commentaryIndex[color] = commentaryHistory[color].length - 1;
-  pendingCommentary = {
+  pendingCommentaries.push({
     ply: game.history().length,
     move,
-    prevEval: latestEval ? {...latestEval} : null,
-    prevFen,
-    analysisSnapshot: snapshotAnalysis(),
+    fenBefore:prevFen,
+    fenAfter:game.fen(),
     color,
-    index: commentaryIndex[color]
-  };
+    index:commentaryIndex[color],
+    entry,
+    generation:analysisGeneration
+  });
+  enqueuePositionAnalysis(prevFen);
+  enqueuePositionAnalysis(game.fen());
   renderCommentaryPanel(color);
 }
 
-function finalizeMoveCommentary(nextEval){
-  if (!pendingCommentary) return;
-  if (game.history().length !== pendingCommentary.ply) return;
-  const {color, index, move} = pendingCommentary;
-  const content = buildMoveCommentary(
-    pendingCommentary.move,
-    pendingCommentary.prevEval,
-    nextEval,
-    pendingCommentary.analysisSnapshot,
-    pendingCommentary.prevFen,
-    snapshotAnalysis()
-  );
-  commentaryHistory[color][index].text = content;
-  renderCommentaryPanel(color);
-  requestGeminiCommentary(color, index, move, nextEval, content);
-  pendingCommentary = null;
+function finalizeReadyCommentaries(){
+  const waiting = [];
+  pendingCommentaries.forEach((pending) => {
+    if (pending.generation !== analysisGeneration) return;
+    const before = analysisCache.get(pending.fenBefore);
+    const after = analysisCache.get(pending.fenAfter);
+    if (!before || !after){
+      waiting.push(pending);
+      return;
+    }
+    const currentEntry = commentaryHistory[pending.color][pending.index];
+    if (currentEntry !== pending.entry) return;
+    const record = ChessCoachAnalysis.createMoveRecord({
+      Chess,
+      ply:pending.ply,
+      move:pending.move,
+      fenBefore:pending.fenBefore,
+      fenAfter:pending.fenAfter,
+      beforeEval:before.eval,
+      afterEval:after.eval,
+      beforeAnalysis:before,
+      afterAnalysis:after
+    });
+    const content = buildMoveCommentary(record);
+    currentEntry.analysis = record;
+    currentEntry.text = content;
+    renderCommentaryPanel(pending.color);
+    requestGeminiCommentary(pending.color, pending.index, pending.move, after.eval, content);
+  });
+  pendingCommentaries = waiting;
 }
 
-function finalizePendingCommentary(){
-  if (!pendingCommentary || !latestEval) return;
-  finalizeMoveCommentary(latestEval);
-}
+window.getChessCommentaryDebug = () => ({
+  white:commentaryHistory.w.map((entry) => entry.analysis).filter(Boolean),
+  black:commentaryHistory.b.map((entry) => entry.analysis).filter(Boolean)
+});
 
 function renderEvaluationText(){
   const evalEl = document.getElementById('evaluationText');
@@ -1373,20 +1150,6 @@ function renderEvaluationText(){
   }
 }
 
-// 수 평가 수치 변환 및 UI 반영 함수
-function updateEvaluationDisplay(type, value, depth = 0) {
-  // Stockfish 점수는 현재 차례 기준이므로 백(White)의 관점으로 일치시킴
-  let scoreW = value;
-  if (game.turn() === 'b') {
-    scoreW = -scoreW;
-  }
-  latestEval = {type, scoreW, depth};
-  if (!engineThinking && pendingCommentary && (type === 'mate' || depth >= COMMENTARY_MIN_DEPTH)){
-    finalizeMoveCommentary(latestEval);
-  }
-  renderEvaluationText();
-}
-
 function applyUciMove(uci){
   const from = uci.slice(0,2), to = uci.slice(2,4);
   const promotion = uci.length > 4 ? uci[4] : undefined;
@@ -1403,6 +1166,7 @@ function applyUciMove(uci){
 function requestEngineMove(){
   if (playMode !== 'engine') return;
   if (!engine || !engineReady) return;
+  enqueuePositionAnalysis(game.fen());
   engineThinking = true;
   latestAnalysis = {fen:game.fen(), lines:[]};
   stableHintAnalysis = {fen:game.fen(), lines:[]};
@@ -1415,13 +1179,11 @@ function requestEngineMove(){
 
 // 플레이어 턴일 때 백그라운드에서 실시간 형세 분석을 수행하는 함수
 function requestBackgroundEval() {
-  if (!engine || !engineReady || engineThinking) return;
+  if (!engine || !engineReady) return;
   latestAnalysis = {fen:game.fen(), lines:[]};
   stableHintAnalysis = {fen:game.fen(), lines:[]};
   updateHintDisplay();
-  engine.postMessage('stop');
-  engine.postMessage('position fen ' + game.fen());
-  engine.postMessage('go depth 12'); 
+  enqueuePositionAnalysis(game.fen());
 }
 
 function maybeEngineMove(){

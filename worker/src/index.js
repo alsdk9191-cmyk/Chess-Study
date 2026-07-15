@@ -70,19 +70,30 @@ export default {
       return json({error:'해설 정보가 부족합니다.'}, 400, cors);
     }
 
+    const rawFacts = payload.facts && typeof payload.facts === 'object' ? payload.facts : {};
     const context = {
       move: shortText(payload.move),
       side: shortText(payload.color),
       classification: shortText(payload.classification),
       evaluation: shortText(payload.evaluation),
       stockfishReason,
+      verifiedFacts: {
+        rule: shortText(rawFacts.rule),
+        deltaCp: Number.isFinite(rawFacts.deltaCp) ? Math.round(rawFacts.deltaCp) : null,
+        materialLoss: Number.isFinite(rawFacts.materialLoss) ? rawFacts.materialLoss : 0,
+        mateAgainstMover: rawFacts.mateAgainstMover === true,
+        tactic: rawFacts.verifiedTactic && typeof rawFacts.verifiedTactic === 'object'
+          ? shortText(JSON.stringify(rawFacts.verifiedTactic))
+          : ''
+      },
       expected: shortText(payload.expected),
       alternative: shortText(payload.alternative),
       coachStyle: shortText(payload.coachStyle)
     };
     const prompt = [
       '당신은 한국어 체스 코치입니다.',
-      'Stockfish가 제공한 사실만 사용하고, 없는 전술이나 기물 손실을 추측하지 마세요.',
+      'verifiedFacts와 stockfishReason에 있는 사실만 짧게 풀어 쓰세요.',
+      'verifiedFacts에 없는 전술, 포크, 기물 손실, 강제 수순을 새로 추측하지 마세요.',
       '평가 라벨을 바꾸지 말고 기보 표기를 제목처럼 반복하지 마세요.',
       context.coachStyle || '까칠하고 직설적인 체스 코치 말투를 쓰되, 욕설·비하·인신공격은 하지 마세요.',
       '초급자가 바로 이해할 수 있는 짧은 문장만 작성하세요.',
