@@ -95,8 +95,13 @@ export default {
           generationConfig: {temperature: 0.2, maxOutputTokens: 180, responseMimeType: 'application/json'}
         })
       });
-    } catch {
-      return json({error:'Gemini 연결에 실패했습니다.'}, 502, cors);
+    } catch (error) {
+      const detail = shortText(error?.message) || 'Gemini request could not be sent.';
+      console.error(JSON.stringify({
+        event: 'gemini_fetch_error',
+        detail
+      }));
+      return json({error: detail}, 502, cors);
     }
 
     if (!geminiResponse.ok) {
@@ -107,6 +112,11 @@ export default {
       } catch {
         // Preserve a useful generic message when Gemini returns a non-JSON error.
       }
+      console.error(JSON.stringify({
+        event: 'gemini_api_error',
+        status: geminiResponse.status,
+        detail: detail || 'Gemini returned an empty error response.'
+      }));
       return json({error: detail || 'Gemini 해설을 만들지 못했습니다.'}, 502, cors);
     }
     const geminiData = await geminiResponse.json();
