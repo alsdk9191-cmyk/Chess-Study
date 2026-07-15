@@ -626,9 +626,14 @@
     line-height:1.9;
     color:var(--ivory);
   }
-  #movelist .row{display:flex;gap:8px;}
+  #movelist .row{display:flex;align-items:center;gap:8px;}
   #movelist .num{color:var(--muted);width:24px;flex-shrink:0;}
-  #movelist .mv{width:56px;}
+  #movelist .mv{
+    flex:1;
+    min-width:0;
+    white-space:nowrap;
+    font-family:'JetBrains Mono','Segoe UI Symbol',sans-serif;
+  }
   .promo-overlay{
     position:absolute;inset:0;background:var(--promo-overlay);
     display:none;align-items:center;justify-content:center;gap:8px;

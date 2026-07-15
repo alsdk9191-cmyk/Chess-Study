@@ -1545,8 +1545,29 @@ function showPromotionPicker(from, to){
   promoOverlay.classList.add('show');
 }
 
+const MOVE_PIECE_SYMBOLS = {
+  w: {p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔'},
+  b: {p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚'}
+};
+
+function formatMoveForDisplay(move){
+  const symbol = MOVE_PIECE_SYMBOLS[move.color]?.[move.piece] || '';
+  const checkSuffix = move.san.endsWith('#') ? ' #' : move.san.endsWith('+') ? ' +' : '';
+  if (move.san.startsWith('O-O')) return `${symbol} ${move.san.replace(/[+#]$/, '')}${checkSuffix}`;
+
+  const details = [];
+  if (move.captured){
+    const capturedColor = move.color === 'w' ? 'b' : 'w';
+    details.push(`${MOVE_PIECE_SYMBOLS[capturedColor][move.captured]} 잡기`);
+  }
+  if (move.promotion){
+    details.push(`${MOVE_PIECE_SYMBOLS[move.color][move.promotion]} 승격`);
+  }
+  return `${symbol} ${move.to}${details.length ? ` (${details.join(' · ')})` : ''}${checkSuffix}`;
+}
+
 function appendMoveToList(move){
-  const history = game.history();
+  const history = game.history({verbose:true});
   movelistEl.innerHTML = '';
   for (let i = 0; i < history.length; i += 2){
     const row = document.createElement('div');
@@ -1554,9 +1575,13 @@ function appendMoveToList(move){
     const num = document.createElement('span');
     num.className = 'num'; num.textContent = (i/2+1) + '.';
     const w = document.createElement('span');
-    w.className = 'mv'; w.textContent = history[i] || '';
+    w.className = 'mv';
+    w.textContent = history[i] ? formatMoveForDisplay(history[i]) : '';
+    if (history[i]) w.title = history[i].san;
     const b = document.createElement('span');
-    b.className = 'mv'; b.textContent = history[i+1] || '';
+    b.className = 'mv';
+    b.textContent = history[i+1] ? formatMoveForDisplay(history[i+1]) : '';
+    if (history[i+1]) b.title = history[i+1].san;
     row.appendChild(num); row.appendChild(w); row.appendChild(b);
     movelistEl.appendChild(row);
   }
