@@ -1,4 +1,5 @@
 const MAX_TEXT_LENGTH = 700;
+const MAX_REVIEW_MOVES = 160;
 
 function json(body, status, headers){
   return new Response(JSON.stringify(body), {
@@ -48,6 +49,30 @@ function parseModelJson(text){
   return body.length ? {body} : null;
 }
 
+function parseGameReviewJson(text){
+  const source = String(text || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+  const start = source.indexOf('{');
+  const end = source.lastIndexOf('}');
+  const candidates = [source, start >= 0 && end > start ? source.slice(start, end + 1) : ''];
+  for (const candidate of candidates){
+    try {
+      const data = JSON.parse(candidate);
+      const summary = shortText(data.summary);
+      if (!summary) continue;
+      const list = (value, limit) => Array.isArray(value) ? value.map(shortText).filter(Boolean).slice(0, limit) : [];
+      const moments = Array.isArray(data.moments) ? data.moments.map((moment) => ({
+        ply:Number(moment?.ply),
+        title:shortText(moment?.title),
+        comment:shortText(moment?.comment)
+      })).filter((moment) => Number.isInteger(moment.ply) && moment.ply > 0 && moment.comment).slice(0, 5) : [];
+      return {summary, strengths:list(data.strengths, 3), weaknesses:list(data.weaknesses, 3), goals:list(data.goals, 3), moments};
+    } catch {
+      // Try the JSON-shaped section when the model wraps its response.
+    }
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env){
     const cors = corsHeaders(request, env);
@@ -61,6 +86,36 @@ export default {
       payload = await request.json();
     } catch {
       return json({error:'잘못된 요청입니다.'}, 400, cors);
+    }
+
+    const isGameReview = payload.mode === 'gameReview';
+    if (isGameReview){
+      const moves = Array.isArray(payload.moves) ? payload.moves.slice(0, MAX_REVIEW_MOVES).map((move) => ({
+        ply:Number(move?.ply), san:shortText(move?.san), color:shortText(move?.color),
+        classification:shortText(move?.classification), deltaCp:Number.isFinite(move?.deltaCp) ? Math.round(move.deltaCp) : null,
+        bestMove:shortText(move?.bestMove), reasons:Array.isArray(move?.reasons) ? move.reasons.map(shortText).filter(Boolean).slice(0, 2) : [],
+        expected:shortText(move?.expected), alternative:shortText(move?.alternative)
+      })).filter((move) => Number.isInteger(move.ply) && move.san) : [];
+      if (!moves.length) return json({error:'리뷰할 기보가 없습니다.'}, 400, cors);
+      const reviewContext = {
+        playerColor:payload.playerColor === 'b' ? 'black' : 'white',
+        result:shortText(payload.result),
+        pgn:String(payload.pgn || '').trim().slice(0, 12000),
+        moves,
+        coachStyle:shortText(payload.coachStyle)
+      };
+      const reviewPrompt = [
+        '당신은 한국어 체스 복기 코치입니다.',
+        '한 수씩 재판정하지 말고 제공된 Stockfish 판정과 이유를 사실로 사용해 경기 전체의 흐름과 반복된 습관을 분석하세요.',
+        '사용자 관점은 playerColor입니다. 상대의 실수보다 사용자가 배우고 재현할 내용에 집중하세요.',
+        '핵심 장면은 최대 5개만 고르고 반드시 입력에 존재하는 ply를 사용하세요.',
+        '과장된 전술이나 입력에 없는 원인을 만들지 마세요.',
+        reviewContext.coachStyle,
+        '아래 JSON 형식만 출력하세요:',
+        '{"summary":"경기 총평 2~3문장","strengths":["잘한 점"],"weaknesses":["고칠 점"],"goals":["다음 경기 목표"],"moments":[{"ply":1,"title":"장면 제목","comment":"이 수에서 배울 점"}]}',
+        `경기 데이터: ${JSON.stringify(reviewContext)}`
+      ].join('\n');
+      return generateGeminiResponse(env, cors, reviewPrompt, parseGameReviewJson, 1000);
     }
 
     const stockfishReason = Array.isArray(payload.stockfishReason)
@@ -107,6 +162,11 @@ export default {
       `분석 데이터: ${JSON.stringify(context)}`
     ].join('\n');
 
+    return generateGeminiResponse(env, cors, prompt, parseModelJson, 180);
+  }
+};
+
+async function generateGeminiResponse(env, cors, prompt, parser, maxOutputTokens){
     const model = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     let geminiResponse;
@@ -119,7 +179,7 @@ export default {
         },
         body: JSON.stringify({
           contents: [{parts: [{text: prompt}]}],
-          generationConfig: {temperature: 1.0, maxOutputTokens: 180}
+          generationConfig: {temperature: 1.0, maxOutputTokens}
         })
       });
     } catch (error) {
@@ -150,8 +210,7 @@ export default {
     const text = geminiData.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || '')
       .join('');
-    const result = parseModelJson(text);
+    const result = parser(text);
     if (!result) return json({error:'Gemini 응답 형식이 올바르지 않습니다.'}, 502, cors);
     return json(result, 200, cors);
-  }
-};
+}

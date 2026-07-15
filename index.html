@@ -40,7 +40,9 @@
       <button id="reviewPrevBtn" type="button" aria-label="이전 국면">&#8592;</button>
       <div class="review-status" id="reviewStatus">현재 0 / 0</div>
       <button id="reviewNextBtn" type="button" aria-label="다음 국면">&#8594;</button>
+      <button class="ai-review-button" id="aiGameReviewBtn" type="button" disabled>AI 전체 리뷰</button>
     </div>
+    <section class="ai-game-review" id="aiGameReviewPanel" hidden aria-live="polite"></section>
 
     <div class="controls-panel">
       <div class="controls-grid">
@@ -109,17 +111,7 @@
         </div>
 
         <div class="field">
-          <label>AI 해설</label>
-          <div class="hint-toggles ai-commentary-toggles">
-            <label class="hint-toggle">
-              <input type="checkbox" id="geminiMyCommentary">
-              <span>내 해설</span>
-            </label>
-            <label class="hint-toggle">
-              <input type="checkbox" id="geminiOpponentCommentary">
-              <span>상대 해설</span>
-            </label>
-          </div>
+          <label>AI 리뷰 말투</label>
           <select id="geminiCoachStyle" aria-label="AI 코치 말투"></select>
           <div class="ai-connection-status" id="geminiConnectionStatus" aria-live="polite"></div>
         </div>
@@ -238,13 +230,13 @@ const difficultyValueEl = document.getElementById('difficultyValue');
 const pieceThemeEl = document.getElementById('pieceTheme');
 const boardThemeEl = document.getElementById('boardTheme');
 const backgroundThemeEl = document.getElementById('backgroundTheme');
-const geminiMyCommentaryEl = document.getElementById('geminiMyCommentary');
-const geminiOpponentCommentaryEl = document.getElementById('geminiOpponentCommentary');
 const geminiCoachStyleEl = document.getElementById('geminiCoachStyle');
 const geminiConnectionStatusEl = document.getElementById('geminiConnectionStatus');
 const reviewPrevBtn = document.getElementById('reviewPrevBtn');
 const reviewNextBtn = document.getElementById('reviewNextBtn');
 const reviewStatusEl = document.getElementById('reviewStatus');
+const aiGameReviewBtn = document.getElementById('aiGameReviewBtn');
+const aiGameReviewPanel = document.getElementById('aiGameReviewPanel');
 const mobileCommentaryEl = document.getElementById('mobileCommentary');
 const commentaryViews = {
   w: {
@@ -346,8 +338,6 @@ let currentBoardTheme = 'wood';
 let currentBackgroundTheme = 'white';
 // Keep a fallback here so AI commentary still works if the optional config file is cached or unavailable.
 const GEMINI_WORKER_URL = window.GEMINI_WORKER_URL || 'https://floral-mouse-f1ca.outofwell.workers.dev';
-let geminiMyCommentary = true;
-let geminiOpponentCommentary = false;
 const AI_COACH_STYLES = window.AI_COACH_STYLES || {};
 const DEFAULT_AI_COACH_STYLE = window.DEFAULT_AI_COACH_STYLE || 'sassy';
 let geminiCoachStyle = DEFAULT_AI_COACH_STYLE;
@@ -362,9 +352,6 @@ function saveUserSettings(){
       pieceTheme: currentPieceTheme,
       boardTheme: currentBoardTheme,
       backgroundTheme: currentBackgroundTheme,
-      geminiMyCommentary,
-      geminiOpponentCommentary,
-      geminiCommentaryConfigured: true,
       geminiCoachStyle
     }));
   } catch {
@@ -382,12 +369,6 @@ function restoreUserSettings(){
     if (saved.pieceTheme in PIECE_THEMES) currentPieceTheme = saved.pieceTheme;
     if (BOARD_THEME_IDS.has(saved.boardTheme)) currentBoardTheme = saved.boardTheme;
     if (BACKGROUND_THEME_IDS.has(saved.backgroundTheme)) currentBackgroundTheme = saved.backgroundTheme;
-    if (saved.geminiCommentaryConfigured === true){
-      if (typeof saved.geminiMyCommentary === 'boolean') geminiMyCommentary = saved.geminiMyCommentary;
-      if (typeof saved.geminiOpponentCommentary === 'boolean') geminiOpponentCommentary = saved.geminiOpponentCommentary;
-    } else if (saved.geminiConfigured === true && typeof saved.geminiEnabled === 'boolean') {
-      geminiMyCommentary = saved.geminiEnabled;
-    }
     if (typeof saved.geminiCoachStyle === 'string' && saved.geminiCoachStyle in AI_COACH_STYLES) geminiCoachStyle = saved.geminiCoachStyle;
   } catch {
     // Ignore invalid or old saved settings and keep the defaults.
@@ -396,8 +377,6 @@ function restoreUserSettings(){
   pieceThemeEl.value = currentPieceTheme;
   boardThemeEl.value = currentBoardTheme;
   backgroundThemeEl.value = currentBackgroundTheme;
-  geminiMyCommentaryEl.checked = geminiMyCommentary;
-  geminiOpponentCommentaryEl.checked = geminiOpponentCommentary;
   geminiCoachStyleEl.innerHTML = Object.entries(AI_COACH_STYLES)
     .map(([id, style]) => `<option value="${id}">${style.label}</option>`)
     .join('');
@@ -422,6 +401,8 @@ let commentaryIndex = {w:-1, b:-1};
 let latestAnalysis = {fen:null, lines:[]};
 let stableHintAnalysis = {fen:null, lines:[]};
 let reviewPly = null;
+let aiGameReviewState = 'idle';
+let aiGameReviewResult = null;
 
 const COMMENTARY_MIN_DEPTH = 12;
 
@@ -835,6 +816,7 @@ function renderCommentaryPanel(color){
 
   const entry = history[index];
   renderCommentaryContent(view.textEl, entry.text);
+  if (entry.aiReviewNote) appendCommentaryLine(view.textEl, 'ai-review-note', `AI 복기: ${entry.aiReviewNote}`);
   view.countEl.textContent = `${index + 1} / ${history.length}`;
   view.prevBtn.disabled = index <= 0;
   view.nextBtn.disabled = index >= history.length - 1;
@@ -867,6 +849,8 @@ function renderMobileCommentary(){
   (content.body || []).slice(0, 2).forEach((line) => {
     appendCommentaryLine(mobileCommentaryEl, 'mobile-commentary-body', line);
   });
+  const entry = history[index];
+  if (entry.aiReviewNote) appendCommentaryLine(mobileCommentaryEl, 'ai-review-note', `AI 복기: ${entry.aiReviewNote}`);
 }
 
 function renderAllCommentaryPanels(){
@@ -927,6 +911,7 @@ function renderReviewControls(){
   reviewStatusEl.textContent = total === 0
     ? '현재 0 / 0'
     : (isReviewing() ? `리뷰 ${displayPly} / ${total}` : `현재 ${displayPly} / ${total}`);
+  updateAIReviewButton();
 }
 
 function setReviewPly(nextPly){
@@ -953,6 +938,10 @@ function resetCommentaryHistory(){
   if (engineWorkerUrl) startAnalysisEngine();
   latestAnalysis = {fen:null, lines:[]};
   stableHintAnalysis = {fen:null, lines:[]};
+  aiGameReviewState = 'idle';
+  aiGameReviewResult = null;
+  aiGameReviewPanel.hidden = true;
+  aiGameReviewPanel.replaceChildren();
   syncCommentaryToReview();
   updateHintDisplay();
 }
@@ -980,38 +969,90 @@ function setGeminiConnectionStatus(message, state = ''){
 }
 
 function refreshGeminiConnectionStatus(){
-  if (!geminiMyCommentary && !geminiOpponentCommentary){
-    setGeminiConnectionStatus('Gemini 해설 꺼짐');
-  } else {
-    setGeminiConnectionStatus(GEMINI_WORKER_URL ? 'Gemini 자동 연결' : 'Worker 주소가 설정되지 않았습니다.');
+  setGeminiConnectionStatus(GEMINI_WORKER_URL ? '게임 종료 후 1회 호출' : 'Worker 주소가 설정되지 않았습니다.');
+}
+
+function getOrderedCommentaryEntries(){
+  return [...commentaryHistory.w, ...commentaryHistory.b].sort((a, b) => a.ply - b.ply);
+}
+
+function updateAIReviewButton(){
+  if (aiGameReviewState === 'loading'){
+    aiGameReviewBtn.disabled = true;
+    aiGameReviewBtn.textContent = '리뷰 작성 중...';
+    return;
   }
+  if (aiGameReviewState === 'done'){
+    aiGameReviewBtn.disabled = false;
+    aiGameReviewBtn.textContent = 'AI 리뷰 다시 보기';
+    return;
+  }
+  const entries = getOrderedCommentaryEntries();
+  const analysisReady = entries.length > 0 && entries.every((entry) => entry.analysis);
+  aiGameReviewBtn.disabled = !game.game_over() || !analysisReady || pendingCommentaries.length > 0;
+  aiGameReviewBtn.textContent = game.game_over() && !analysisReady ? '분석 준비 중...' : 'AI 전체 리뷰';
 }
 
-function shouldRequestGeminiCommentary(color){
-  return color === playerColor ? geminiMyCommentary : geminiOpponentCommentary;
+function renderAIReviewSummary(result){
+  aiGameReviewPanel.replaceChildren();
+  aiGameReviewPanel.hidden = false;
+  appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-title', 'AI 경기 총평');
+  appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-summary', result.summary);
+  const sections = [
+    ['잘한 점', result.strengths],
+    ['고칠 점', result.weaknesses],
+    ['다음 목표', result.goals]
+  ];
+  sections.forEach(([label, items]) => {
+    if (!Array.isArray(items) || !items.length) return;
+    appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-heading', label);
+    items.forEach((item) => appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-item', `• ${item}`));
+  });
 }
 
-async function requestGeminiCommentary(color, index, move, nextEval, content){
+function applyAIReviewMoments(result){
+  getOrderedCommentaryEntries().forEach((entry) => { delete entry.aiReviewNote; });
+  (result.moments || []).forEach((moment) => {
+    const entry = getOrderedCommentaryEntries().find((candidate) => candidate.ply === Number(moment.ply));
+    if (entry) entry.aiReviewNote = [moment.title, moment.comment].filter(Boolean).join(' — ');
+  });
+}
+
+async function requestGeminiGameReview(){
   const endpoint = getGeminiEndpoint();
-  if (!shouldRequestGeminiCommentary(color) || !endpoint || !content || typeof content === 'string') return;
-
-  const entry = commentaryHistory[color][index];
-  if (!entry) return;
+  if (!endpoint || !game.game_over() || aiGameReviewState === 'loading') return;
+  if (aiGameReviewState === 'done' && aiGameReviewResult){
+    renderAIReviewSummary(aiGameReviewResult);
+    setReviewPly(0);
+    return;
+  }
+  const entries = getOrderedCommentaryEntries();
+  if (!entries.length || entries.some((entry) => !entry.analysis)) return;
   const coachStyle = AI_COACH_STYLES[geminiCoachStyle]?.instruction || AI_COACH_STYLES[DEFAULT_AI_COACH_STYLE]?.instruction || '';
+  aiGameReviewState = 'loading';
+  updateAIReviewButton();
+  setGeminiConnectionStatus('전체 경기를 리뷰하는 중...', '');
 
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        move: move.san,
-        color: color === 'w' ? '백' : '흑',
-        evaluation: formatEvalForText(nextEval),
-        classification: content.title,
-        stockfishReason: content.body || [],
-        facts: content.facts || {},
-        expected: content.expected || '',
-        alternative: content.alternative || '',
+        mode:'gameReview',
+        playerColor,
+        result:game.in_checkmate() ? (game.turn() === 'w' ? '흑 승' : '백 승') : '무승부',
+        pgn:game.pgn(),
+        moves:entries.map((entry) => ({
+          ply:entry.ply,
+          san:entry.san,
+          color:entry.analysis.color,
+          classification:entry.text?.title || entry.analysis.classification?.label || '',
+          deltaCp:Number.isFinite(entry.analysis.deltaCp) ? Math.round(entry.analysis.deltaCp) : null,
+          bestMove:entry.analysis.bestMove || '',
+          reasons:Array.isArray(entry.text?.body) ? entry.text.body : [],
+          expected:entry.text?.expected || '',
+          alternative:entry.text?.alternative || ''
+        })),
         coachStyle
       })
     });
@@ -1024,23 +1065,24 @@ async function requestGeminiCommentary(color, index, move, nextEval, content){
         // The status code still identifies a Worker-level failure.
       }
       setGeminiConnectionStatus(detail || `Gemini 연결 실패 (${response.status})`, 'error');
+      aiGameReviewState = 'idle';
+      updateAIReviewButton();
       return;
     }
 
     const result = await response.json();
-    if (!Array.isArray(result.body) || !result.body.length) return;
-
-    const currentEntry = commentaryHistory[color][index];
-    if (currentEntry !== entry) return;
-    currentEntry.text = {
-      ...content,
-      body: result.body.slice(0, 2).map((line) => String(line).trim()).filter(Boolean)
-    };
+    if (!result || typeof result.summary !== 'string') throw new Error('invalid-review');
+    aiGameReviewResult = result;
+    aiGameReviewState = 'done';
+    applyAIReviewMoments(result);
+    renderAIReviewSummary(result);
     setGeminiConnectionStatus('Gemini 연결됨', 'success');
-    renderCommentaryPanel(color);
+    setReviewPly(0);
+    updateAIReviewButton();
   } catch {
-    // Keep the Stockfish explanation when the optional AI service is unavailable.
     setGeminiConnectionStatus('Gemini 연결 실패: Worker 설정을 확인하세요.', 'error');
+    aiGameReviewState = 'idle';
+    updateAIReviewButton();
   }
 }
 
@@ -1100,9 +1142,9 @@ function finalizeReadyCommentaries(){
     currentEntry.analysis = record;
     currentEntry.text = content;
     renderCommentaryPanel(pending.color);
-    requestGeminiCommentary(pending.color, pending.index, pending.move, after.eval, content);
   });
   pendingCommentaries = waiting;
+  updateAIReviewButton();
 }
 
 window.getChessCommentaryDebug = () => ({
@@ -1595,18 +1637,6 @@ backgroundThemeEl.addEventListener('change', (e) => {
   saveUserSettings();
 });
 
-geminiMyCommentaryEl.addEventListener('change', (e) => {
-  geminiMyCommentary = e.target.checked;
-  refreshGeminiConnectionStatus();
-  saveUserSettings();
-});
-
-geminiOpponentCommentaryEl.addEventListener('change', (e) => {
-  geminiOpponentCommentary = e.target.checked;
-  refreshGeminiConnectionStatus();
-  saveUserSettings();
-});
-
 geminiCoachStyleEl.addEventListener('change', (e) => {
   geminiCoachStyle = e.target.value in AI_COACH_STYLES ? e.target.value : DEFAULT_AI_COACH_STYLE;
   e.target.value = geminiCoachStyle;
@@ -1618,6 +1648,7 @@ hintToggleEl.addEventListener('change', updateHintDisplay);
 opponentHintToggleEl.addEventListener('change', updateHintDisplay);
 reviewPrevBtn.addEventListener('click', () => setReviewPly(getDisplayPly() - 1));
 reviewNextBtn.addEventListener('click', () => setReviewPly(getDisplayPly() + 1));
+aiGameReviewBtn.addEventListener('click', requestGeminiGameReview);
 
 commentaryViews.w.prevBtn.addEventListener('click', () => {
   if (commentaryIndex.w > 0){

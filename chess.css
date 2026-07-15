@@ -312,6 +312,39 @@
     opacity:.35;
     cursor:default;
   }
+  .review-bar .ai-review-button{
+    width:auto;
+    min-width:112px;
+    padding:0 14px;
+    border-radius:999px;
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:700;
+    background:var(--brass);
+    color:var(--active-text);
+  }
+  .ai-game-review{
+    width:min(100%, 520px);
+    box-sizing:border-box;
+    padding:16px 18px;
+    background:var(--panel);
+    border:1px solid var(--soft-border);
+    border-radius:8px;
+    color:var(--ivory);
+  }
+  .ai-game-review-title{font-weight:800;color:var(--brass);margin-bottom:8px;}
+  .ai-game-review-summary{font-size:14px;line-height:1.65;margin-bottom:12px;}
+  .ai-game-review-heading{margin-top:10px;font-size:12px;font-weight:800;color:var(--muted);}
+  .ai-game-review-item{margin-top:4px;font-size:13px;line-height:1.5;}
+  .ai-review-note{
+    margin-top:10px;
+    padding:8px 10px;
+    border-left:3px solid var(--brass);
+    background:color-mix(in srgb, var(--brass) 9%, transparent);
+    color:var(--ivory);
+    font-size:12px;
+    line-height:1.5;
+  }
   .review-status{
     min-width:130px;
     text-align:center;
@@ -653,6 +686,17 @@
     .hero-status .dot-live{
       width:8px;
       height:8px;
+    }
+    .review-bar{
+      gap:8px;
+      padding:9px 10px;
+    }
+    .review-status{
+      min-width:92px;
+    }
+    .review-bar .ai-review-button{
+      min-width:104px;
+      padding:0 10px;
     }
     .controls-grid{
       grid-template-columns:1fr;
