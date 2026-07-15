@@ -762,16 +762,129 @@ function updateHintDisplay(){
   const alt1 = stableHintAnalysis.lines[1];
   const alt2 = stableHintAnalysis.lines[2];
   const evalText = formatEvalForText({type: best.type, scoreW: best.scoreW});
-  const altText = [alt1?.san, alt2?.san].filter(Boolean).join(', ');
+  const bestText = formatSanAtPosition(best.san, game.fen());
+  const altText = [alt1?.san, alt2?.san]
+    .filter(Boolean)
+    .map((san) => formatSanAtPosition(san, game.fen()))
+    .join(', ');
   hintTextEl.textContent = altText
-    ? `추천: ${best.san} · 평가 ${evalText} · 후보 ${altText}`
-    : `추천: ${best.san} · 평가 ${evalText}`;
+    ? `추천: ${bestText} · 평가 ${evalText} · 후보 ${altText}`
+    : `추천: ${bestText} · 평가 ${evalText}`;
   render();
 }
 
 function buildMoveCommentary(record){
   if (!record) return '분석 중…';
   return ChessCoachAnalysis.buildCommentary(record);
+}
+
+const MOVE_PIECE_SYMBOLS = {
+  w: {p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔'},
+  b: {p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚'}
+};
+
+function formatMoveForDisplay(move){
+  const symbol = MOVE_PIECE_SYMBOLS[move.color]?.[move.piece] || '';
+  const checkSuffix = move.san.endsWith('#') ? ' #' : move.san.endsWith('+') ? ' +' : '';
+  if (move.san.startsWith('O-O')) return `${symbol} ${move.san.replace(/[+#]$/, '')}${checkSuffix}`;
+
+  const details = [];
+  if (move.captured){
+    const capturedColor = move.color === 'w' ? 'b' : 'w';
+    details.push(`${MOVE_PIECE_SYMBOLS[capturedColor][move.captured]} 잡기`);
+  }
+  if (move.promotion){
+    details.push(`${MOVE_PIECE_SYMBOLS[move.color][move.promotion]} 승격`);
+  }
+  return `${symbol} ${move.to}${details.length ? ` (${details.join(' · ')})` : ''}${checkSuffix}`;
+}
+
+function parseSanAtPosition(san, fen){
+  if (!san || !fen) return null;
+  try {
+    const position = new Chess(fen);
+    return position.move(san, {sloppy:true});
+  } catch {
+    return null;
+  }
+}
+
+function formatSanAtPosition(san, fen){
+  const move = parseSanAtPosition(san, fen);
+  return move ? formatMoveForDisplay(move) : san;
+}
+
+function formatExpectedMoves(text, fen){
+  if (!text || !fen) return text || '';
+  try {
+    const position = new Chess(fen);
+    return text.split(/\s+/).filter(Boolean).map((san) => {
+      const move = position.move(san, {sloppy:true});
+      return move ? formatMoveForDisplay(move) : san;
+    }).join('  ');
+  } catch {
+    return text;
+  }
+}
+
+function formatAlternativeMoves(text, fen){
+  if (!text || !fen) return text || '';
+  return text.split(/(\s+또는\s+|\s*,\s*)/).map((part) => {
+    if (!part.trim() || /^(또는|,)$/.test(part.trim())) return part;
+    return formatSanAtPosition(part.trim(), fen);
+  }).join('');
+}
+
+function getCommentaryMoveDisplays(entry){
+  const record = entry?.analysis;
+  if (!record) return [];
+  const displays = new Map();
+  const addMove = (san, fen) => {
+    const formatted = formatSanAtPosition(san, fen);
+    if (san && formatted !== san) displays.set(san, formatted);
+  };
+
+  addMove(entry.san, record.fenBefore);
+  addMove(record.bestMove, record.fenBefore);
+  (record.alternatives || []).forEach((san) => addMove(san, record.fenBefore));
+  addMove(record.verifiedTactic?.moveSan, record.fenAfter);
+
+  try {
+    const position = new Chess(record.fenAfter);
+    (record.consequence?.sequence || []).forEach((san) => {
+      const move = position.move(san, {sloppy:true});
+      if (move) displays.set(san, formatMoveForDisplay(move));
+    });
+  } catch {}
+  return [...displays.entries()].sort((a, b) => b[0].length - a[0].length);
+}
+
+function replaceMoveDisplays(text, displays){
+  return displays.reduce((result, [san, formatted]) => {
+    const escaped = san.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return result.replace(new RegExp(`(^|[\\s(])${escaped}(?=$|[\\s.,!?):·가-힣])`, 'g'), `$1${formatted}`);
+  }, text || '');
+}
+
+function formatCommentaryText(text, entry){
+  if (!text || !entry?.analysis) return text || '';
+  return replaceMoveDisplays(text, getCommentaryMoveDisplays(entry));
+}
+
+function formatGameReviewText(text){
+  if (!text) return '';
+  const displays = new Map();
+  const ambiguous = new Set();
+  game.history({verbose:true}).forEach((move) => {
+    const formatted = formatMoveForDisplay(move);
+    if (displays.has(move.san) && displays.get(move.san) !== formatted){
+      ambiguous.add(move.san);
+      displays.delete(move.san);
+    } else if (!ambiguous.has(move.san)){
+      displays.set(move.san, formatted);
+    }
+  });
+  return replaceMoveDisplays(text, [...displays.entries()].sort((a, b) => b[0].length - a[0].length));
 }
 
 function appendCommentaryLine(parent, className, text){
@@ -782,36 +895,38 @@ function appendCommentaryLine(parent, className, text){
   parent.appendChild(line);
 }
 
-function appendAIReviewNote(parent, note){
+function appendAIReviewNote(parent, note, entry){
   if (!note) return;
   const line = document.createElement('div');
   line.className = 'ai-review-note';
   if (note.title){
     const title = document.createElement('span');
     title.className = 'ai-review-note-title';
-    title.textContent = note.title;
+    title.textContent = formatCommentaryText(note.title, entry);
     line.appendChild(title);
   }
-  const message = [note.comment, note.innerThought ? `(${note.innerThought})` : ''].filter(Boolean).join(' ');
+  const message = [formatCommentaryText(note.comment, entry), note.innerThought ? `(${note.innerThought})` : ''].filter(Boolean).join(' ');
   if (message) line.appendChild(document.createTextNode(`${note.title ? ' - ' : ''}${message}`));
   parent.appendChild(line);
 }
 
-function renderCommentaryContent(container, content){
+function renderCommentaryContent(container, content, entry){
   container.replaceChildren();
   if (!content || typeof content === 'string'){
-    container.textContent = content || '';
+    container.textContent = formatCommentaryText(content, entry);
     return;
   }
 
-  appendCommentaryLine(container, 'commentary-title', content.title);
-  (content.body || []).forEach((line) => appendCommentaryLine(container, 'commentary-body', line));
+  appendCommentaryLine(container, 'commentary-title', formatCommentaryText(content.title, entry));
+  (content.body || []).forEach((line) => appendCommentaryLine(container, 'commentary-body', formatCommentaryText(line, entry)));
 
   if (content.expected || content.alternative){
     const meta = document.createElement('div');
     meta.className = 'commentary-meta';
-    appendCommentaryLine(meta, 'commentary-meta-row', content.expected ? `예상 진행: ${content.expected}` : '');
-    appendCommentaryLine(meta, 'commentary-meta-row', content.alternative ? `대안: ${content.alternative}` : '');
+    const expected = formatExpectedMoves(content.expected, entry?.analysis?.fenAfter);
+    const alternative = formatAlternativeMoves(content.alternative, entry?.analysis?.fenBefore);
+    appendCommentaryLine(meta, 'commentary-meta-row', expected ? `예상 진행: ${expected}` : '');
+    appendCommentaryLine(meta, 'commentary-meta-row', alternative ? `대안: ${alternative}` : '');
     container.appendChild(meta);
   }
 }
@@ -831,8 +946,8 @@ function renderCommentaryPanel(color){
   }
 
   const entry = history[index];
-  renderCommentaryContent(view.textEl, entry.text);
-  appendAIReviewNote(view.textEl, entry.aiReviewNote);
+  renderCommentaryContent(view.textEl, entry.text, entry);
+  appendAIReviewNote(view.textEl, entry.aiReviewNote, entry);
   view.countEl.textContent = `${index + 1} / ${history.length}`;
   view.prevBtn.disabled = index <= 0;
   view.nextBtn.disabled = index >= history.length - 1;
@@ -856,17 +971,17 @@ function renderMobileCommentary(){
   if (typeof content === 'string'){
     const text = document.createElement('div');
     text.className = 'mobile-commentary-body';
-    text.textContent = content;
+    text.textContent = formatCommentaryText(content, history[index]);
     mobileCommentaryEl.appendChild(text);
     return;
   }
 
-  appendCommentaryLine(mobileCommentaryEl, 'mobile-commentary-title', content.title);
-  (content.body || []).slice(0, 2).forEach((line) => {
-    appendCommentaryLine(mobileCommentaryEl, 'mobile-commentary-body', line);
-  });
   const entry = history[index];
-  appendAIReviewNote(mobileCommentaryEl, entry.aiReviewNote);
+  appendCommentaryLine(mobileCommentaryEl, 'mobile-commentary-title', formatCommentaryText(content.title, entry));
+  (content.body || []).slice(0, 2).forEach((line) => {
+    appendCommentaryLine(mobileCommentaryEl, 'mobile-commentary-body', formatCommentaryText(line, entry));
+  });
+  appendAIReviewNote(mobileCommentaryEl, entry.aiReviewNote, entry);
 }
 
 function renderAllCommentaryPanels(){
@@ -1013,7 +1128,7 @@ function renderAIReviewSummary(result){
   aiGameReviewPanel.replaceChildren();
   aiGameReviewPanel.hidden = false;
   appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-title', 'AI 경기 총평');
-  appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-summary', result.summary);
+  appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-summary', formatGameReviewText(result.summary));
   const sections = [
     ['잘한 점', result.strengths],
     ['고칠 점', result.weaknesses],
@@ -1022,7 +1137,7 @@ function renderAIReviewSummary(result){
   sections.forEach(([label, items]) => {
     if (!Array.isArray(items) || !items.length) return;
     appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-heading', label);
-    items.forEach((item) => appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-item', `• ${item}`));
+    items.forEach((item) => appendCommentaryLine(aiGameReviewPanel, 'ai-game-review-item', `• ${formatGameReviewText(item)}`));
   });
 }
 
@@ -1543,27 +1658,6 @@ function showPromotionPicker(from, to){
     promoOverlay.appendChild(btn);
   });
   promoOverlay.classList.add('show');
-}
-
-const MOVE_PIECE_SYMBOLS = {
-  w: {p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔'},
-  b: {p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚'}
-};
-
-function formatMoveForDisplay(move){
-  const symbol = MOVE_PIECE_SYMBOLS[move.color]?.[move.piece] || '';
-  const checkSuffix = move.san.endsWith('#') ? ' #' : move.san.endsWith('+') ? ' +' : '';
-  if (move.san.startsWith('O-O')) return `${symbol} ${move.san.replace(/[+#]$/, '')}${checkSuffix}`;
-
-  const details = [];
-  if (move.captured){
-    const capturedColor = move.color === 'w' ? 'b' : 'w';
-    details.push(`${MOVE_PIECE_SYMBOLS[capturedColor][move.captured]} 잡기`);
-  }
-  if (move.promotion){
-    details.push(`${MOVE_PIECE_SYMBOLS[move.color][move.promotion]} 승격`);
-  }
-  return `${symbol} ${move.to}${details.length ? ` (${details.join(' · ')})` : ''}${checkSuffix}`;
 }
 
 function appendMoveToList(move){
