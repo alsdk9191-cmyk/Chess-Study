@@ -1,0 +1,1134 @@
+{
+  "schemaVersion": 1,
+  "app": "Chess Study",
+  "exportedAt": "2026-07-16T00:55:49.622Z",
+  "game": {
+    "result": "흑 승",
+    "pgn": "1. c4 c5 2. e3 e5 3. Nc3 Nc6 4. d3 Nf6 5. Be2 d5 6. Nxd5 Nxd5 7. cxd5 Qxd5 8. e4 Qd6 9. b3 Qg6 10. g3 Bd6 11. h4 h6 12. Nf3 O-O 13. Be3 Rd8 14. Bc1 a5 15. Kf1 f5 16. Bb2 Be6 17. Nd2 Rf8 18. Kg2 f4 19. g4 Rad8 20. Nc4 Bc7 21. f3 Qf7 22. Rc1 b6 23. Qf1 Qe7 24. h5 Nd4 25. Nd2 Qe8 26. Qd1 a4 27. Ra1 Rf7 28. bxa4 Nxe2 29. Qxe2 Rfd7 30. d4 exd4 31. a5 c4 32. Nxc4 d3 33. Qf2 Bxc4 34. axb6 Bxb6 35. Qxb6 d2 36. Rad1 Be2 37. Qf2 Bxd1 38. Rxd1 Qe6 39. Ba1 Kh7 40. Qe2 Rd3 41. a4 Re3 42. Qb5 Re1 43. Qb7 Qd7 44. Qb3 Qa7 45. Qe3 Qxe3 46. Bd4 Re2+ 47. Kh1 Qxf3+ 48. Kg1 Qg2#",
+    "finalFen": "3r4/6pk/7p/7P/P2BPpP1/8/3pr1q1/3R2K1 w - - 2 49",
+    "moveCount": 96,
+    "playerColor": "b",
+    "playMode": "engine",
+    "skill": 8
+  },
+  "ai": {
+    "model": "gemini-3.1-flash-lite",
+    "coachStyle": "light",
+    "createdAt": "2026-07-16T00:54:45.640Z"
+  },
+  "review": {
+    "summary": "상대의 느슨한 운영을 틈타 승기를 잡긴 했으나, 중반 이후 스스로 기물을 내주고 복잡한 상황을 자초하며 경기를 그르칠 뻔했군요. 승패와 무관하게 기본적인 방어와 기물 관리 면에서 수준 미달의 모습을 보였습니다. (승리라는 결과에 취해 자기 객관화가 안 되는 꼴이라니, 한심하군.)",
+    "strengths": [
+      "정확한 수와 최선의 판단으로 흐름을 끊지 않고 메이트까지 몰아붙인 점은 인정하죠. (경계심이 생기긴 하는군. 다음엔 덜 허술했으면 좋겠네.)"
+    ],
+    "weaknesses": [
+      "상대의 공격에 제대로 대응하지 않고 기물 손실을 자초하는 나쁜 습관이 있네요.",
+      "폰을 전진시키기 전 그로 인해 발생하는 대각선의 위협을 전혀 살피지 않는군요."
+    ],
+    "goals": [
+      "기물을 이동하기 전에 해당 기물이 담당하던 방어 임무가 무엇인지 매번 확인해보세요.",
+      "폰을 전진할 때 그 뒤에 생기는 빈틈이 상대에게 어떤 기회를 줄지 먼저 생각해보는 게 좋아요."
+    ],
+    "moments": [
+      {
+        "ply": 8,
+        "san": "Nf6",
+        "title": "오프닝의 전개",
+        "comment": "Nge7이나 d6가 더 정교한 전개였습니다.",
+        "innerThought": "뻔한 길로만 가려 하는군."
+      },
+      {
+        "ply": 34,
+        "san": "Rf8",
+        "title": "위기 상황의 판단",
+        "comment": "Be7이나 Nd4가 더 나은 방어 수단이었습니다.",
+        "innerThought": "어디로 도망가야 할지도 모르나 보네."
+      },
+      {
+        "ply": 56,
+        "san": "Nxe2",
+        "title": "기물 교환의 실수",
+        "comment": "Rfd7 또는 Ra8로 기물을 안전하게 배치하는 것이 우선이었습니다.",
+        "innerThought": "지켜야 할 기물도 못 지키면서 무슨 게임을 하겠다는 거지."
+      },
+      {
+        "ply": 66,
+        "san": "Bxc4",
+        "title": "전술적 미스",
+        "comment": "d2 또는 bxa5로 상황을 정리했어야 합니다.",
+        "innerThought": "제 발로 구멍을 파고 앉았군."
+      },
+      {
+        "ply": 70,
+        "san": "d2",
+        "title": "결정적 블런더",
+        "comment": "Qf7 또는 Qe7으로 킹 사이드를 방어하는 것이 최선이었습니다.",
+        "innerThought": "이건 실수가 아니라 그냥 경기를 포기하고 싶은 모양이군."
+      },
+      {
+        "ply": 74,
+        "san": "Bxd1",
+        "title": "교환의 부정확성",
+        "comment": "Bc4나 Rb7을 통해 기물의 활동성을 유지해야 했습니다.",
+        "innerThought": "더 좋은 대안이 뻔히 보이는데도 굳이 최악을 고르네."
+      },
+      {
+        "ply": 76,
+        "san": "Qe6",
+        "title": "템포 공격의 미흡",
+        "comment": "Rd3나 Qf7이 더 안전하고 실속 있는 수였습니다.",
+        "innerThought": "상대가 뭘 노리는지 감조차 못 잡고 있나 봐."
+      },
+      {
+        "ply": 82,
+        "san": "Re3",
+        "title": "위험한 기물 위치",
+        "comment": "Kg8이나 Ra3를 통해 킹의 안전을 확보해야 했습니다.",
+        "innerThought": "결국 그 모양으로 기물을 허비하는군."
+      },
+      {
+        "ply": 86,
+        "san": "Qd7",
+        "title": "정확한 수",
+        "comment": "이동 후 큰 전술 변화 없이 자리를 잡았습니다.",
+        "innerThought": "드디어 제대로 된 수를 둘 줄은 아나 보네."
+      },
+      {
+        "ply": 88,
+        "san": "Qa7",
+        "title": "최선",
+        "comment": "전술적 흐름을 유지한 최선의 수입니다.",
+        "innerThought": "그래, 이건 좀 볼만했어."
+      },
+      {
+        "ply": 90,
+        "san": "Qxe3",
+        "title": "정확한 수",
+        "comment": "상대의 큰 기물을 회수하며 이득을 챙겼습니다.",
+        "innerThought": "이제야 실력이 좀 나오는군."
+      },
+      {
+        "ply": 92,
+        "san": "Re2+",
+        "title": "정확한 수",
+        "comment": "체크를 통해 상대의 선택지를 강제로 제한했습니다.",
+        "innerThought": "상대도 멍청하지만, 너도 딱히 수준이 높진 않아."
+      },
+      {
+        "ply": 96,
+        "san": "Qg2#",
+        "title": "메이트 마무리",
+        "comment": "마지막 메이트로 경기를 끝냈습니다.",
+        "innerThought": "운 좋게 메이트를 찾았을 뿐이지, 칭찬할 수준은 아니야."
+      }
+    ]
+  },
+  "moves": [
+    {
+      "ply": 2,
+      "san": "c5",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -59,
+        "bestMove": "c5",
+        "reasons": [
+          "e5 또는 e6가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "e4 d6 Be2 e5",
+        "alternative": "e5 또는 e6",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 4,
+      "san": "e5",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -58,
+        "bestMove": "e5",
+        "reasons": [
+          "Nf6 또는 Nc6가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "b3 Nf6 Bb2 d6",
+        "alternative": "Nf6 또는 Nc6",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 6,
+      "san": "Nc6",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -73,
+        "bestMove": "Nc6",
+        "reasons": [
+          "Nf6 또는 d6가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Nge2 Nf6 Nd5 Be7",
+        "alternative": "Nf6 또는 d6",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 8,
+      "san": "Nf6",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -80,
+        "bestMove": "Nf6",
+        "reasons": [
+          "Nge7 또는 d6가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Nd5 Be7 Ne2 Nb4",
+        "alternative": "Nge7 또는 d6",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "오프닝의 전개",
+        "comment": "Nge7이나 d6가 더 정교한 전개였습니다.",
+        "innerThought": "뻔한 길로만 가려 하는군."
+      }
+    },
+    {
+      "ply": 10,
+      "san": "d5",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -52,
+        "bestMove": "d5",
+        "reasons": [
+          "d6 또는 Be7가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Nxd5 Nxd5 cxd5 Qxd5",
+        "alternative": "d6 또는 Be7",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 12,
+      "san": "Nxd5",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -42,
+        "bestMove": "Nxd5",
+        "reasons": [
+          "Be6 또는 Rb8가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "cxd5 Qxd5 Nf3 Be7",
+        "alternative": "Be6 또는 Rb8",
+        "rule": "engine-delta",
+        "materialLoss": 2,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 14,
+      "san": "Qxd5",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": 11,
+        "bestMove": "Qxd5",
+        "reasons": [
+          "기물을 얻었습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Nf3 Be7 b3 O-O",
+        "alternative": "Ne7 또는 Nb8",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 16,
+      "san": "Qd6",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -54,
+        "bestMove": "Qd6",
+        "reasons": [
+          "Qd7 또는 Qe6가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Nf3 Be7 Nd2 Be6",
+        "alternative": "Qd7 또는 Qe6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 18,
+      "san": "Qg6",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -47,
+        "bestMove": "Qg6",
+        "reasons": [
+          "Be7 또는 h5가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Nf3 Qxg2 Rg1 Qh3",
+        "alternative": "Be7 또는 h5",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 20,
+      "san": "Bd6",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -60,
+        "bestMove": "Bd6",
+        "reasons": [
+          "Qf6 또는 h6가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Nf3 h6 O-O Bh3",
+        "alternative": "Qf6 또는 h6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 22,
+      "san": "h6",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -55,
+        "bestMove": "h6",
+        "reasons": [
+          "Qe6 또는 Qf6가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Bh5 Qe6 Ne2 Bd7",
+        "alternative": "Qe6 또는 Qf6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 24,
+      "san": "O-O",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -68,
+        "bestMove": "O-O",
+        "reasons": [
+          "Bc7 또는 b6가 더 정확했습니다.",
+          "체크와 탈출 칸을 먼저 확인하세요."
+        ],
+        "expected": "Be3 f5 exf5 Bxf5",
+        "alternative": "Bc7 또는 b6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 26,
+      "san": "Rd8",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -64,
+        "bestMove": "Rd8",
+        "reasons": [
+          "b6 또는 Be7가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Kf1 f5 Qc1 b6",
+        "alternative": "b6 또는 Be7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 28,
+      "san": "a5",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -47,
+        "bestMove": "a5",
+        "reasons": [
+          "f5 또는 Be6가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Bb2 Bd7 a4 Nd4",
+        "alternative": "f5 또는 Be6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 30,
+      "san": "f5",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -29,
+        "bestMove": "f5",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "exf5 Bxf5 Bb2 Bc7",
+        "alternative": "Be6 또는 Bg4",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 32,
+      "san": "Be6",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -88,
+        "bestMove": "Be6",
+        "reasons": [
+          "Rf8 또는 a4가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Rh2 fxe4 h5 Qf7",
+        "alternative": "Rf8 또는 a4",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 34,
+      "san": "Rf8",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -89,
+        "bestMove": "Rf8",
+        "reasons": [
+          "Be7 또는 Nd4가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Bf3 f4 g4 Nd4",
+        "alternative": "Be7 또는 Nd4",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "위기 상황의 판단",
+        "comment": "Be7이나 Nd4가 더 나은 방어 수단이었습니다.",
+        "innerThought": "어디로 도망가야 할지도 모르나 보네."
+      }
+    },
+    {
+      "ply": 36,
+      "san": "f4",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -89,
+        "bestMove": "f4",
+        "reasons": [
+          "Qf6 또는 Qf7가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Bh5 Qf6 Bg4 fxg3",
+        "alternative": "Qf6 또는 Qf7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 38,
+      "san": "Rad8",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -77,
+        "bestMove": "Rad8",
+        "reasons": [
+          "b6 또는 Qf6가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Rc1 b6 h5 Qf6",
+        "alternative": "b6 또는 Qf6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 40,
+      "san": "Bc7",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -44,
+        "bestMove": "Bc7",
+        "reasons": [
+          "Qf7 또는 Qf6가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "f3 Qf7 Rc1 b5",
+        "alternative": "Qf7 또는 Qf6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 42,
+      "san": "Qf7",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -43,
+        "bestMove": "Qf7",
+        "reasons": [
+          "Kh7 또는 Qf6가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Na3 Qe7 Nb5 Bb8",
+        "alternative": "Kh7 또는 Qf6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 44,
+      "san": "b6",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -26,
+        "bestMove": "b6",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Qf1 Nd4 h5 Rd7",
+        "alternative": "Qe7 또는 Kh7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 46,
+      "san": "Qe7",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -72,
+        "bestMove": "Qe7",
+        "reasons": [
+          "Qf6 또는 Rd7가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qf2 Nd4 Bxd4 Rxd4",
+        "alternative": "Qf6 또는 Rd7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 48,
+      "san": "Nd4",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -22,
+        "bestMove": "Nd4",
+        "reasons": [
+          "중앙에 영향력을 만들었습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Bxd4 Rxd4 Qe1 a4",
+        "alternative": "Bf7 또는 Bc8",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 50,
+      "san": "Qe8",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -40,
+        "bestMove": "Qe8",
+        "reasons": [
+          "Rd7 또는 Qf6가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Bd1 Qe7 Bc2 Rd7",
+        "alternative": "Rd7 또는 Qf6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 52,
+      "san": "a4",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -40,
+        "bestMove": "a4",
+        "reasons": [
+          "Rf7 또는 Qc6가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Bc3 axb3 Bxd4 Rxd4",
+        "alternative": "Rf7 또는 Qc6",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 54,
+      "san": "Rf7",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -28,
+        "bestMove": "Rf7",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Bxd4 Rxd4 Qc2 Qc6",
+        "alternative": "Nxe2 또는 Ra8",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 56,
+      "san": "Nxe2",
+      "color": "b",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -113,
+        "bestMove": "Nxe2",
+        "reasons": [
+          "Rfd7 또는 Ra8가 더 안전했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Qxe2 Rfd7 d4 exd4",
+        "alternative": "Rfd7 또는 Ra8",
+        "rule": "engine-delta",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "기물 교환의 실수",
+        "comment": "Rfd7 또는 Ra8로 기물을 안전하게 배치하는 것이 우선이었습니다.",
+        "innerThought": "지켜야 할 기물도 못 지키면서 무슨 게임을 하겠다는 거지."
+      }
+    },
+    {
+      "ply": 58,
+      "san": "Rfd7",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -77,
+        "bestMove": "Rfd7",
+        "reasons": [
+          "Qxa4 또는 Qd7가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Rhd1 Rxd3 Nf1 c4",
+        "alternative": "Qxa4 또는 Qd7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 60,
+      "san": "exd4",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -21,
+        "bestMove": "exd4",
+        "reasons": [
+          "기물을 얻었습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "a5 c4 Nxc4 d3",
+        "alternative": "cxd4 또는 Rxd4",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 62,
+      "san": "c4",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -58,
+        "bestMove": "c4",
+        "reasons": [
+          "b5 또는 bxa5가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Nxc4 d3 Qf2 Bxc4",
+        "alternative": "b5 또는 bxa5",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 64,
+      "san": "d3",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -46,
+        "bestMove": "d3",
+        "reasons": [
+          "bxa5 또는 Rb8가 더 정확했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Qf2 Bxc4 axb6 Be5",
+        "alternative": "bxa5 또는 Rb8",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 66,
+      "san": "Bxc4",
+      "color": "b",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -124,
+        "bestMove": "Bxc4",
+        "reasons": [
+          "d2 또는 bxa5가 더 안전했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "axb6 Bxb6 Qxb6 d2",
+        "alternative": "d2 또는 bxa5",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "전술적 미스",
+        "comment": "d2 또는 bxa5로 상황을 정리했어야 합니다.",
+        "innerThought": "제 발로 구멍을 파고 앉았군."
+      }
+    },
+    {
+      "ply": 68,
+      "san": "Bxb6",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -32,
+        "bestMove": "Bxb6",
+        "reasons": [
+          "기물을 얻었습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Qxb6 d2 Qg6 Qxg6",
+        "alternative": "Bb8 또는 Be5",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 70,
+      "san": "d2",
+      "color": "b",
+      "stockfish": {
+        "classification": "블런더",
+        "deltaCp": -289,
+        "bestMove": "d2",
+        "reasons": [
+          "Qf7 또는 Qe7가 훨씬 안전했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Qf2 d1=B Rhxd1 Rxd1",
+        "alternative": "Qf7 또는 Qe7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "결정적 블런더",
+        "comment": "Qf7 또는 Qe7으로 킹 사이드를 방어하는 것이 최선이었습니다.",
+        "innerThought": "이건 실수가 아니라 그냥 경기를 포기하고 싶은 모양이군."
+      }
+    },
+    {
+      "ply": 72,
+      "san": "Be2",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -74,
+        "bestMove": "Be2",
+        "reasons": [
+          "Qf7 또는 Rb8가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Qb3+ Kh7 Qc3 Qe7",
+        "alternative": "Qf7 또는 Rb8",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 74,
+      "san": "Bxd1",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -58,
+        "bestMove": "Bxd1",
+        "reasons": [
+          "Bc4 또는 Rb7가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Rxd1 Qe6 Qf1 Rd3",
+        "alternative": "Bc4 또는 Rb7",
+        "rule": "engine-delta",
+        "materialLoss": 2,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "교환의 부정확성",
+        "comment": "Bc4나 Rb7을 통해 기물의 활동성을 유지해야 했습니다.",
+        "innerThought": "더 좋은 대안이 뻔히 보이는데도 굳이 최악을 고르네."
+      }
+    },
+    {
+      "ply": 76,
+      "san": "Qe6",
+      "color": "b",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -110,
+        "bestMove": "Qe6",
+        "reasons": [
+          "Rd3 또는 Qf7가 더 안전했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qg1 Qc4 Qf1 Qc5",
+        "alternative": "Rd3 또는 Qf7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "템포 공격의 미흡",
+        "comment": "Rd3나 Qf7이 더 안전하고 실속 있는 수였습니다.",
+        "innerThought": "상대가 뭘 노리는지 감조차 못 잡고 있나 봐."
+      }
+    },
+    {
+      "ply": 78,
+      "san": "Kh7",
+      "color": "b",
+      "stockfish": {
+        "classification": "좋은 수",
+        "deltaCp": 48,
+        "bestMove": "Kh7",
+        "reasons": [
+          "큰 전술 변화는 없습니다."
+        ],
+        "expected": "a4 Qb3 Qe2 Qe3",
+        "alternative": "",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 80,
+      "san": "Rd3",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -19,
+        "bestMove": "Rd3",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qf2 R3d7 a4 Qb3",
+        "alternative": "Qb6 또는 Qxa2",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 82,
+      "san": "Re3",
+      "color": "b",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -160,
+        "bestMove": "Re3",
+        "reasons": [
+          "Kg8 또는 Ra3가 더 안전했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qb5 Rdd3 Qb7 Re2+",
+        "alternative": "Kg8 또는 Ra3",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "위험한 기물 위치",
+        "comment": "Kg8이나 Ra3를 통해 킹의 안전을 확보해야 했습니다.",
+        "innerThought": "결국 그 모양으로 기물을 허비하는군."
+      }
+    },
+    {
+      "ply": 84,
+      "san": "Re1",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -5,
+        "bestMove": "Re1",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qb7 Qg8 Qb1 Re2+",
+        "alternative": "Rdd3 또는 Qf7",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 86,
+      "san": "Qd7",
+      "color": "b",
+      "stockfish": {
+        "classification": "정확한 수",
+        "deltaCp": 91,
+        "bestMove": "Qd7",
+        "reasons": [
+          "큰 전술 변화는 없습니다."
+        ],
+        "expected": "Qb1 Re2+ Kh3 Qe7",
+        "alternative": "",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "정확한 수",
+        "comment": "이동 후 큰 전술 변화 없이 자리를 잡았습니다.",
+        "innerThought": "드디어 제대로 된 수를 둘 줄은 아나 보네."
+      }
+    },
+    {
+      "ply": 88,
+      "san": "Qa7",
+      "color": "b",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 1515,
+        "bestMove": "Qa7",
+        "reasons": [
+          "큰 전술 변화는 없습니다."
+        ],
+        "expected": "Bd4 Qxd4 Qe3 fxe3",
+        "alternative": "",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "최선",
+        "comment": "전술적 흐름을 유지한 최선의 수입니다.",
+        "innerThought": "그래, 이건 좀 볼만했어."
+      }
+    },
+    {
+      "ply": 90,
+      "san": "Qxe3",
+      "color": "b",
+      "stockfish": {
+        "classification": "정확한 수",
+        "deltaCp": 100,
+        "bestMove": "Qxe3",
+        "reasons": [
+          "큰 기물을 얻었습니다."
+        ],
+        "expected": "Rxe1 dxe1=Q Bd4 Q1f2+",
+        "alternative": "",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "정확한 수",
+        "comment": "상대의 큰 기물을 회수하며 이득을 챙겼습니다.",
+        "innerThought": "이제야 실력이 좀 나오는군."
+      }
+    },
+    {
+      "ply": 92,
+      "san": "Re2+",
+      "color": "b",
+      "stockfish": {
+        "classification": "정확한 수",
+        "deltaCp": 100,
+        "bestMove": "Re2+",
+        "reasons": [
+          "체크로 선택지를 줄였습니다."
+        ],
+        "expected": "Kf1 Qxf3+ Kg1 Qg2#",
+        "alternative": "",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "정확한 수",
+        "comment": "체크를 통해 상대의 선택지를 강제로 제한했습니다.",
+        "innerThought": "상대도 멍청하지만, 너도 딱히 수준이 높진 않아."
+      }
+    },
+    {
+      "ply": 94,
+      "san": "Qxf3+",
+      "color": "b",
+      "stockfish": {
+        "classification": "정확한 수",
+        "deltaCp": 100,
+        "bestMove": "Qxf3+",
+        "reasons": [
+          "기물을 얻었습니다."
+        ],
+        "expected": "Kg1 Qg2#",
+        "alternative": "",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 96,
+      "san": "Qg2#",
+      "color": "b",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": 0,
+        "bestMove": "Qg2#",
+        "reasons": [
+          "메이트를 만들었습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "",
+        "alternative": "Qxg4+ 또는 Qg3+",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "메이트 마무리",
+        "comment": "마지막 메이트로 경기를 끝냈습니다.",
+        "innerThought": "운 좋게 메이트를 찾았을 뿐이지, 칭찬할 수준은 아니야."
+      }
+    }
+  ]
+}

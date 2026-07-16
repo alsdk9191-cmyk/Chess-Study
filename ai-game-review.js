@@ -61,7 +61,12 @@
       color:shortText(move?.color),
       classification:shortText(move?.classification),
       deltaCp:Number.isFinite(move?.deltaCp) ? Math.round(move.deltaCp) : null,
+      rawDeltaCp:Number.isFinite(move?.rawDeltaCp) ? Math.round(move.rawDeltaCp) : null,
       bestMove:shortText(move?.bestMove),
+      followedHint:Boolean(move?.followedHint),
+      matchedEngineBest:Boolean(move?.matchedEngineBest),
+      candidateRank:Number.isFinite(move?.candidateRank) ? Number(move.candidateRank) : null,
+      comparisonSource:shortText(move?.comparisonSource),
       reasons:Array.isArray(move?.reasons) ? move.reasons.map(shortText).filter(Boolean).slice(0, 2) : [],
       expected:shortText(move?.expected),
       alternative:shortText(move?.alternative),
@@ -87,8 +92,10 @@
     if (loss >= 80) return {key:'large-inaccuracy', score:5000 + loss};
     if (move.promotion) return {key:'promotion', score:4500};
     if (move.captured === 'q' || move.captured === 'r') return {key:'major-capture', score:4000 + (move.captured === 'q' ? 900 : 500)};
-    if (move.classification === '최선') return {key:'best-move', score:3500 + Math.max(0, move.deltaCp || 0)};
-    if (move.classification === '정확한 수') return {key:'accurate-move', score:3000 + Math.max(0, move.deltaCp || 0)};
+    if ((move.classification === '최선' || move.classification === '정확한 수')
+        && (move.isCheck || move.captured || move.promotion)){
+      return {key:'noteworthy-best', score:3500 + Math.max(0, move.deltaCp || 0)};
+    }
     return null;
   }
 
@@ -141,6 +148,9 @@
       'moves의 각 수마다 moment를 하나씩 작성하고 누락하거나 추가하지 마세요. moves가 비어 있으면 moments는 빈 배열로 두세요.',
       '각 moment는 입력에 존재하는 ply와 san을 정확히 한 쌍으로 복사하세요.',
       '과장된 전술이나 입력에 없는 원인을 만들지 마세요.',
+      'followedHint는 당시 화면의 엔진 힌트를 사용자가 따른 기록일 뿐 수의 등급이 아닙니다. classification과 deltaCp로 수의 품질을 설명하세요.',
+      'followedHint가 true인데 matchedEngineBest가 false라면 탐색 과정에서 추천 순위가 달라진 경우입니다. 사용자를 비난하거나 조롱하지 말고 분석 불확실성과 현재 더 나은 후보를 설명하세요.',
+      'matchedEngineBest가 true인 수에는 대안이 더 좋았다고 쓰지 마세요.',
       '말투는 아래 coachStyle 지시를 가장 우선해서 따르세요.',
       context.coachStyle,
       'coachStyle은 moments뿐 아니라 summary, strengths, weaknesses, goals의 모든 문장에 뚜렷하게 적용하세요. 특히 summary를 평범한 분석 보고서처럼 쓰지 마세요.',

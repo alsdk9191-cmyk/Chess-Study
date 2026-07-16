@@ -746,6 +746,18 @@ function getHintMove(){
   return movingPiece ? {from, to, pieceKey: movingPiece.color + movingPiece.type} : null;
 }
 
+function getActiveHintSnapshot(){
+  if (!shouldShowHint() || stableHintAnalysis.fen !== game.fen() || !stableHintAnalysis.lines.length) return null;
+  const best = stableHintAnalysis.lines.find((line) => line.multipv === 1) || stableHintAnalysis.lines[0];
+  if (!best?.uci) return null;
+  return {
+    fen:game.fen(),
+    uci:best.uci,
+    san:best.san || '',
+    depth:Number.isFinite(best.depth) ? best.depth : COMMENTARY_MIN_DEPTH
+  };
+}
+
 function shouldShowHint(){
   const isMyTurn = game.turn() === playerColor;
   return isMyTurn ? hintToggleEl.checked : opponentHintToggleEl.checked;
@@ -1207,7 +1219,12 @@ function buildReviewExportData(){
     stockfish:{
       classification:entry.text?.title || entry.analysis?.classification?.label || '',
       deltaCp:Number.isFinite(entry.analysis?.deltaCp) ? Math.round(entry.analysis.deltaCp) : null,
+      rawDeltaCp:Number.isFinite(entry.analysis?.rawDeltaCp) ? Math.round(entry.analysis.rawDeltaCp) : null,
       bestMove:entry.analysis?.bestMove || '',
+      followedHint:Boolean(entry.analysis?.followedHint),
+      matchedEngineBest:Boolean(entry.analysis?.matchedEngineBest),
+      candidateRank:Number.isFinite(entry.analysis?.candidateRank) ? entry.analysis.candidateRank : null,
+      comparisonSource:entry.analysis?.comparisonSource || '',
       reasons:Array.isArray(entry.text?.body) ? [...entry.text.body] : [],
       expected:entry.text?.expected || '',
       alternative:entry.text?.alternative || '',
@@ -1326,7 +1343,12 @@ async function requestGeminiGameReview(){
     color:entry.analysis.color,
     classification:entry.text?.title || entry.analysis.classification?.label || '',
     deltaCp:Number.isFinite(entry.analysis.deltaCp) ? Math.round(entry.analysis.deltaCp) : null,
+    rawDeltaCp:Number.isFinite(entry.analysis.rawDeltaCp) ? Math.round(entry.analysis.rawDeltaCp) : null,
     bestMove:entry.analysis.bestMove || '',
+    followedHint:Boolean(entry.analysis.followedHint),
+    matchedEngineBest:Boolean(entry.analysis.matchedEngineBest),
+    candidateRank:Number.isFinite(entry.analysis.candidateRank) ? entry.analysis.candidateRank : null,
+    comparisonSource:entry.analysis.comparisonSource || '',
     reasons:Array.isArray(entry.text?.body) ? entry.text.body : [],
     expected:entry.text?.expected || '',
     alternative:entry.text?.alternative || '',
@@ -1399,7 +1421,7 @@ async function requestGeminiGameReview(){
   }
 }
 
-function queueMoveCommentary(move, prevFen){
+function queueMoveCommentary(move, prevFen, hintSnapshot = null){
   const color = move.color;
   if (!opponentCommentaryEnabled && color !== playerColor) return;
   latestEval = null;
@@ -1422,6 +1444,7 @@ function queueMoveCommentary(move, prevFen){
     color,
     index:commentaryIndex[color],
     entry,
+    hintSnapshot,
     generation:analysisGeneration
   });
   enqueuePositionAnalysis(prevFen);
@@ -1450,7 +1473,8 @@ function finalizeReadyCommentaries(){
       beforeEval:before.eval,
       afterEval:after.eval,
       beforeAnalysis:before,
-      afterAnalysis:after
+      afterAnalysis:after,
+      hintSnapshot:pending.hintSnapshot
     });
     const content = buildMoveCommentary(record);
     currentEntry.analysis = record;
@@ -1773,11 +1797,12 @@ function onSquareClick(id){
       render();
       return;
     }
+    const hintSnapshot = getActiveHintSnapshot();
     const prevFen = game.fen();
     const move = game.move({from: selected, to: id});
     selected = null; legalTargets = [];
     if (move){
-      queueMoveCommentary(move, prevFen);
+      queueMoveCommentary(move, prevFen, hintSnapshot);
       lastMove = {from: move.from, to: move.to};
       animateMove(move);
       appendMoveToList(move);
@@ -1811,11 +1836,12 @@ function showPromotionPicker(from, to){
     img.style.height = '100%';
     btn.appendChild(img);
     btn.addEventListener('click', () => {
+      const hintSnapshot = getActiveHintSnapshot();
       const prevFen = game.fen();
       const move = game.move({from, to, promotion:p});
       promoOverlay.classList.remove('show');
       if (move){
-        queueMoveCommentary(move, prevFen);
+        queueMoveCommentary(move, prevFen, hintSnapshot);
         lastMove = {from: move.from, to: move.to};
         animateMove(move);
         appendMoveToList(move);

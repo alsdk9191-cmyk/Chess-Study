@@ -22,9 +22,23 @@ const moves = [
   assert.ok(request.prompt.includes('summary에도 괄호 속마음을 최소 한 번'));
   assert.ok(request.prompt.includes('딱딱한 명사형 항목'));
   assert.ok(request.prompt.includes('상대 수에는 절대 코멘트를 만들지 마세요'));
+  assert.ok(request.prompt.includes('followedHint는 당시 화면의 엔진 힌트'));
+  assert.ok(request.prompt.includes('분석 불확실성'));
   const context = JSON.parse(request.prompt.split('경기 데이터: ')[1]);
   assert.deepEqual(context.moves.map((move) => move.ply), [3, 5], 'Gemini에는 중요한 사용자 수 분석만 보낸다');
   assert.ok(!request.prompt.includes('최대 5개'), '핵심 장면에 고정 개수 제한을 두지 않는다');
+}
+
+{
+  const hintMoves = [
+    {ply:1, san:'d4', color:'w', classification:'최선', deltaCp:0, followedHint:true, matchedEngineBest:true},
+    {ply:3, san:'Qh5+', color:'w', classification:'최선', deltaCp:0, followedHint:true, matchedEngineBest:true, isCheck:true}
+  ];
+  assert.deepEqual(
+    review.selectCriticalMoves(hintMoves, 'w').map((move) => move.ply),
+    [3],
+    '평범한 힌트 최선 수는 모두 보내지 않고 전술적으로 중요한 장면만 리뷰한다'
+  );
 }
 
 {

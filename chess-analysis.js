@@ -52,6 +52,16 @@
     return {label:'블런더', tone:'나쁜', rule:'engine-delta'};
   }
 
+  function classifyCandidateDelta(deltaCp){
+    if (!Number.isFinite(deltaCp)) return {label:'분석 완료', tone:'중립', rule:'missing-evaluation'};
+    if (deltaCp >= -15) return {label:'정확한 수', tone:'좋은', rule:'candidate-gap'};
+    if (deltaCp >= -40) return {label:'좋은 수', tone:'좋은', rule:'candidate-gap'};
+    if (deltaCp >= -80) return {label:'무난한 수', tone:'중립', rule:'candidate-gap'};
+    if (deltaCp >= -120) return {label:'부정확', tone:'나쁜', rule:'candidate-gap'};
+    if (deltaCp >= -250) return {label:'실수', tone:'나쁜', rule:'candidate-gap'};
+    return {label:'블런더', tone:'나쁜', rule:'candidate-gap'};
+  }
+
   function isPrincipledOpeningMove(move, fenBefore){
     if (!move || !fenBefore) return false;
     const fullmove = parseInt(String(fenBefore).split(/\s+/)[5], 10);
@@ -210,6 +220,12 @@
     const consequence = record.consequence;
     const materialLoss = consequence?.materialLoss || 0;
 
+    if (record.move?.san?.includes('#')){
+      return {label:'최선', tone:'좋은', rule:'delivered-mate'};
+    }
+    if (record.matchedEngineBest){
+      return {label:'최선', tone:'좋은', rule:'matched-engine-best'};
+    }
     if (consequence?.mateAgainstMover || isMateAgainst(record.afterEval, record.color)){
       return {label:'블런더', tone:'나쁜', rule:'forced-mate'};
     }
@@ -225,7 +241,9 @@
       return {label:deltaCp <= -260 ? '블런더' : '실수', tone:'나쁜', rule:'verified-piece-loss'};
     }
 
-    let classification = classifyDelta(deltaCp);
+    let classification = record.comparisonSource === 'same-search-multipv'
+      ? classifyCandidateDelta(deltaCp)
+      : classifyDelta(deltaCp);
     if (record.principledOpening
         && !record.verifiedTactic
         && !consequence?.endsInMate
@@ -282,33 +300,48 @@
     const consequence = record.consequence;
     const tactic = record.verifiedTactic;
     let reason = '';
+    let hintNote = '';
 
-    if (consequence?.mateAgainstMover){
+    if (record.move.san.includes('#')){
+      reason = '체크메이트를 완성했습니다.';
+    } else if (record.followedHint && record.matchedEngineBest){
+      reason = '표시된 힌트를 따랐고, 확정 분석에서도 최선 수입니다.';
+    } else if (record.matchedEngineBest){
+      reason = '엔진의 최선 수를 두었습니다.';
+    } else {
+      if (record.followedHint){
+        hintNote = '당시 표시된 힌트를 따랐지만, 확정 분석에서는 추천 순위가 달라졌습니다.';
+      }
+    }
+
+    if (!reason && consequence?.mateAgainstMover){
       reason = '강제 메이트를 허용했습니다.';
-    } else if (tactic){
+    } else if (!reason && tactic){
       const targets = tactic.targets.map((target) => `${target.square}의 ${target.pieceName}`).join('와 ');
       reason = `${tactic.moveSan} 뒤 ${targets}를 동시에 노리며 실제 기물 이득이 남습니다.`;
-    } else if ((consequence?.materialLoss || 0) >= 3 && Number.isFinite(deltaCp) && deltaCp <= -80){
+    } else if (!reason && (consequence?.materialLoss || 0) >= 3 && Number.isFinite(deltaCp) && deltaCp <= -80){
       const prefix = consequence.firstReplyLoss >= 3 && consequence.firstReplySan
         ? `${consequence.firstReplySan} 이후`
         : '예상 수순대로 진행하면';
       reason = `${prefix} 기물 약 ${consequence.materialLoss}점 손해입니다.`;
-    } else if (Number.isFinite(deltaCp) && deltaCp <= -220){
+    } else if (!reason && Number.isFinite(deltaCp) && deltaCp <= -220){
       reason = alternatives ? `${alternatives}가 훨씬 안전했습니다.` : '상대 전술을 허용했습니다.';
-    } else if (Number.isFinite(deltaCp) && deltaCp <= -95){
+    } else if (!reason && Number.isFinite(deltaCp) && deltaCp <= -95){
       reason = alternatives ? `${alternatives}가 더 안전했습니다.` : '더 안전한 수가 있었습니다.';
-    } else if (Number.isFinite(deltaCp) && deltaCp <= -35){
+    } else if (!reason && Number.isFinite(deltaCp) && deltaCp <= -35){
       reason = alternatives ? `${alternatives}가 더 정확했습니다.` : '조금 더 정확한 수가 있었습니다.';
-    } else {
+    } else if (!reason) {
       reason = buildFeatureText(record);
     }
 
-    const point = Number.isFinite(deltaCp) && deltaCp < 15 ? learningPoint(record) : '';
+    const point = !record.followedHint && !record.matchedEngineBest && Number.isFinite(deltaCp) && deltaCp < 15
+      ? learningPoint(record)
+      : '';
     return {
       title:record.classification.label,
-      body:[reason, point].filter(Boolean),
+      body:[hintNote, reason, point].filter(Boolean),
       expected:consequence?.sequence?.slice(0, 4).join(' ') || '',
-      alternative:Number.isFinite(deltaCp) && deltaCp < 15 ? alternatives : '',
+      alternative:!record.matchedEngineBest && Number.isFinite(deltaCp) && deltaCp < 15 ? alternatives : '',
       facts:{
         rule:record.classification.rule,
         deltaCp:Number.isFinite(deltaCp) ? Math.round(deltaCp) : null,
@@ -323,9 +356,33 @@
     const move = cloneMove(options.move);
     const beforeUtility = evalUtility(options.beforeEval, move.color);
     const afterUtility = evalUtility(options.afterEval, move.color);
-    const deltaCp = Number.isFinite(beforeUtility) && Number.isFinite(afterUtility)
+    const rawDeltaCp = Number.isFinite(beforeUtility) && Number.isFinite(afterUtility)
       ? afterUtility - beforeUtility
       : null;
+    const moveUci = move.from + move.to + (move.promotion || '');
+    const beforeLines = options.beforeAnalysis?.lines || [];
+    const bestLine = beforeLines.find((line) => line.multipv === 1) || beforeLines[0] || null;
+    const playedLine = beforeLines.find((line) => line.uci === moveUci) || null;
+    const bestUtility = evalUtility(bestLine, move.color);
+    const playedUtility = evalUtility(playedLine, move.color);
+    const matchedEngineBest = Boolean(bestLine?.uci && bestLine.uci === moveUci);
+    const candidateRank = playedLine
+      ? (Number.isFinite(playedLine.multipv) ? playedLine.multipv : beforeLines.indexOf(playedLine) + 1)
+      : null;
+    const hintSnapshot = options.hintSnapshot || null;
+    const followedHint = Boolean(
+      hintSnapshot
+      && hintSnapshot.fen === options.fenBefore
+      && hintSnapshot.uci === moveUci
+    );
+    const deltaCp = matchedEngineBest
+      ? 0
+      : Number.isFinite(bestUtility) && Number.isFinite(playedUtility)
+        ? playedUtility - bestUtility
+        : rawDeltaCp;
+    const comparisonSource = matchedEngineBest || (Number.isFinite(bestUtility) && Number.isFinite(playedUtility))
+      ? 'same-search-multipv'
+      : 'before-after-fallback';
     const replyLine = options.afterAnalysis?.lines?.find((line) => line.multipv === 1)
       || options.afterAnalysis?.lines?.[0]
       || null;
@@ -347,8 +404,14 @@
       beforeEval:options.beforeEval ? {...options.beforeEval} : null,
       afterEval:options.afterEval ? {...options.afterEval} : null,
       deltaCp,
+      rawDeltaCp,
       centipawnLoss:Number.isFinite(deltaCp) ? Math.max(0, -deltaCp) : null,
-      bestMove:options.beforeAnalysis?.lines?.[0]?.san || options.beforeAnalysis?.lines?.[0]?.uci || '',
+      bestMove:bestLine?.san || bestLine?.uci || '',
+      matchedEngineBest,
+      followedHint,
+      candidateRank,
+      comparisonSource,
+      hintSnapshot:hintSnapshot ? {...hintSnapshot} : null,
       principalVariation:[...pv],
       alternatives:getAlternatives(options.beforeAnalysis, move),
       consequence,
@@ -362,6 +425,7 @@
   return {
     analyzePvConsequences,
     buildCommentary,
+    classifyCandidateDelta,
     classifyDelta,
     classifyRecord,
     createMoveRecord,

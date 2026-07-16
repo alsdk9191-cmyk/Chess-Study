@@ -77,4 +77,73 @@ function baseRecord(overrides = {}){
 assert.ok(coach.evalUtility({type:'mate', scoreW:3}, 'w') > 90000);
 assert.ok(coach.evalUtility({type:'mate', scoreW:3}, 'b') < -90000);
 
+{
+  const record = coach.createMoveRecord({
+    ply:1,
+    move:{color:'w', from:'d2', to:'d4', piece:'p', flags:'b', san:'d4'},
+    fenBefore:'before',
+    fenAfter:'after',
+    beforeEval:{type:'cp', scoreW:40},
+    afterEval:{type:'cp', scoreW:-180},
+    beforeAnalysis:{lines:[{multipv:1, uci:'d2d4', san:'d4', type:'cp', scoreW:40, pv:[]}]},
+    afterAnalysis:{lines:[]},
+    hintSnapshot:{fen:'before', uci:'d2d4', san:'d4', depth:12}
+  });
+  assert.equal(record.deltaCp, 0, '최선 수는 별도 전후 탐색의 흔들림으로 감점하지 않는다');
+  assert.equal(record.rawDeltaCp, -220, '전후 평가 변화는 진단용으로만 보존한다');
+  assert.equal(record.classification.label, '최선');
+  assert.equal(record.classification.rule, 'matched-engine-best');
+  assert.equal(record.followedHint, true);
+  assert.equal(coach.buildCommentary(record).alternative, '');
+}
+
+{
+  const record = coach.createMoveRecord({
+    ply:1,
+    move:{color:'w', from:'g1', to:'f3', piece:'n', flags:'n', san:'Nf3'},
+    fenBefore:'before', fenAfter:'after',
+    beforeEval:{type:'cp', scoreW:50}, afterEval:{type:'cp', scoreW:-300},
+    beforeAnalysis:{lines:[
+      {multipv:1, uci:'d2d4', san:'d4', type:'cp', scoreW:50, pv:[]},
+      {multipv:2, uci:'g1f3', san:'Nf3', type:'cp', scoreW:20, pv:[]}
+    ]},
+    afterAnalysis:{lines:[]}
+  });
+  assert.equal(record.deltaCp, -30, '후보 수는 같은 탐색의 MultiPV 점수로 비교한다');
+  assert.equal(record.classification.label, '좋은 수');
+  assert.equal(record.classification.rule, 'candidate-gap');
+  assert.equal(record.candidateRank, 2);
+  assert.equal(record.comparisonSource, 'same-search-multipv');
+}
+
+{
+  const record = coach.createMoveRecord({
+    ply:1,
+    move:{color:'w', from:'g1', to:'f3', piece:'n', flags:'n', san:'Nf3'},
+    fenBefore:'before', fenAfter:'after',
+    beforeEval:{type:'cp', scoreW:50}, afterEval:{type:'cp', scoreW:20},
+    beforeAnalysis:{lines:[
+      {multipv:1, uci:'d2d4', san:'d4', type:'cp', scoreW:50, pv:[]},
+      {multipv:2, uci:'g1f3', san:'Nf3', type:'cp', scoreW:20, pv:[]}
+    ]},
+    afterAnalysis:{lines:[]},
+    hintSnapshot:{fen:'before', uci:'g1f3', san:'Nf3', depth:12}
+  });
+  const commentary = coach.buildCommentary(record);
+  assert.equal(record.followedHint, true);
+  assert.equal(record.matchedEngineBest, false);
+  assert.equal(record.classification.label, '좋은 수', '힌트 여부와 후보 점수 등급을 분리한다');
+  assert.ok(commentary.body[0].includes('추천 순위가 달라졌습니다'));
+}
+
+{
+  const result = coach.classifyRecord(baseRecord({
+    move:{color:'w', from:'g7', to:'g8', piece:'q', captured:'', promotion:'', flags:'n', san:'Qg8#'},
+    deltaCp:-999,
+    consequence:{materialLoss:0, sequence:[], endsInMate:true, mateAgainstMover:false}
+  }));
+  assert.equal(result.label, '최선', '체크메이트 수는 평가 흔들림과 무관하게 최선이다');
+  assert.equal(result.rule, 'delivered-mate');
+}
+
 console.log('chess-analysis regression tests passed');
