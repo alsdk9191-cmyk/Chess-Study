@@ -139,6 +139,7 @@
       <div class="btn-row controls-actions">
         <button id="newGameBtn">새 게임</button>
         <button id="undoBtn">무르기</button>
+        <button id="resignBtn" class="resign-button" disabled>기권</button>
       </div>
     </div>
   </div>
@@ -206,6 +207,7 @@ let legalTargets = [];
 let lastMove = null;
 let engineReady = false;
 let engineThinking = false;
+let resignedBy = null;
 let opponentCommentaryEnabled = false;
 let currentSkill = 8;
 let currentDiff = getDifficultyConfig(currentSkill);
@@ -251,6 +253,7 @@ const reviewPrevAiBtn = document.getElementById('reviewPrevAiBtn');
 const reviewNextAiBtn = document.getElementById('reviewNextAiBtn');
 const reviewStatusEl = document.getElementById('reviewStatus');
 const aiGameReviewBtn = document.getElementById('aiGameReviewBtn');
+const resignBtn = document.getElementById('resignBtn');
 const aiGameReviewPanel = document.getElementById('aiGameReviewPanel');
 const mobileCommentaryEl = document.getElementById('mobileCommentary');
 const commentaryViews = {
@@ -764,6 +767,11 @@ function shouldShowHint(){
 }
 
 function updateHintDisplay(){
+  if (isGameEnded() && !isReviewing()){
+    hintTextEl.textContent = resignedBy ? '기권으로 게임이 종료되었습니다.' : '게임이 종료되었습니다.';
+    render();
+    return;
+  }
   if (!hintToggleEl.checked && !opponentHintToggleEl.checked){
     hintTextEl.textContent = '힌트를 켜면 추천 수가 표시됩니다.';
     render();
@@ -1200,11 +1208,16 @@ function updateAIReviewButton(){
   }
   const entries = getOrderedCommentaryEntries();
   const analysisReady = entries.length > 0 && entries.every((entry) => entry.analysis);
-  aiGameReviewBtn.disabled = !game.game_over() || !analysisReady || pendingCommentaries.length > 0;
-  aiGameReviewBtn.textContent = game.game_over() && !analysisReady ? '분석 준비 중...' : 'AI 전체 리뷰';
+  aiGameReviewBtn.disabled = !isGameEnded() || !analysisReady || pendingCommentaries.length > 0;
+  aiGameReviewBtn.textContent = isGameEnded() && !analysisReady ? '분석 준비 중...' : 'AI 전체 리뷰';
+}
+
+function isGameEnded(){
+  return Boolean(resignedBy) || game.game_over();
 }
 
 function getGameResultLabel(){
+  if (resignedBy) return resignedBy === 'w' ? '흑 승 (백 기권)' : '백 승 (흑 기권)';
   if (game.in_checkmate()) return game.turn() === 'w' ? '흑 승' : '백 승';
   if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) return '무승부';
   return '진행 중';
@@ -1328,7 +1341,7 @@ function applyAIReviewMoments(result){
 
 async function requestGeminiGameReview(){
   const endpoint = getGeminiEndpoint();
-  if (!endpoint || !game.game_over() || aiGameReviewState === 'loading') return;
+  if (!endpoint || !isGameEnded() || aiGameReviewState === 'loading') return;
   if (aiGameReviewState === 'done' && aiGameReviewResult){
     renderAIReviewSummary(aiGameReviewResult);
     setReviewPly(0);
@@ -1531,6 +1544,7 @@ function renderEvaluationText(){
 }
 
 function applyUciMove(uci){
+  if (isGameEnded()) return;
   const from = uci.slice(0,2), to = uci.slice(2,4);
   const promotion = uci.length > 4 ? uci[4] : undefined;
   const prevFen = game.fen();
@@ -1567,7 +1581,7 @@ function requestBackgroundEval() {
 }
 
 function maybeEngineMove(){
-  if (game.game_over()) { updateStatus(); return; }
+  if (isGameEnded()) { updateStatus(); return; }
   if (playMode !== 'engine'){
     requestBackgroundEval();
     return;
@@ -1785,7 +1799,7 @@ function render(){
 }
 
 function onSquareClick(id){
-  if (isReviewing() || engineThinking || game.game_over()) return;
+  if (isReviewing() || engineThinking || isGameEnded()) return;
   if (playMode === 'engine' && game.turn() !== playerColor) return;
 
   if (selected && legalTargets.includes(id)){
@@ -1880,11 +1894,19 @@ function appendMoveToList(move){
 function updateStatus(){
   const displayState = getDisplayState();
   const positionGame = displayState.game;
+  resignBtn.disabled = isReviewing() || isGameEnded() || getCurrentPly() === 0;
   statusEl.classList.toggle('thinking', engineThinking);
   statusEl.classList.remove('is-alert');
   if (isReviewing()){
     if (positionGame.in_check()) statusEl.classList.add('is-alert');
     statusText.textContent = `리뷰 중 · ${displayState.ply} / ${getCurrentPly()}수`;
+    return;
+  }
+  if (resignedBy){
+    const loser = resignedBy === 'w' ? '백' : '흑';
+    const winner = resignedBy === 'w' ? '흑' : '백';
+    statusEl.classList.add('is-alert');
+    statusText.textContent = `${loser} 기권 · ${winner} 승리`;
     return;
   }
   if (playMode === 'engine'){
@@ -2038,6 +2060,21 @@ function setPlayerColor(c){
 }
 
 document.getElementById('newGameBtn').addEventListener('click', resetGame);
+resignBtn.addEventListener('click', () => {
+  if (isGameEnded() || getCurrentPly() === 0) return;
+  resignedBy = playMode === 'local' ? game.turn() : playerColor;
+  if (engine) engine.postMessage('stop');
+  engineThinking = false;
+  selected = null;
+  legalTargets = [];
+  promoOverlay.classList.remove('show');
+  clearMoveAnimation();
+  stableHintAnalysis = {fen:null, lines:[]};
+  render();
+  renderReviewControls();
+  updateHintDisplay();
+  updateStatus();
+});
 document.getElementById('undoBtn').addEventListener('click', () => {
   if (engineThinking) return;
   if (engine) engine.postMessage('stop'); 
@@ -2061,6 +2098,7 @@ function resetGame(){
   clearMoveAnimation();
   resetCommentaryHistory();
   game.reset();
+  resignedBy = null;
   reviewPly = null;
   selected = null; legalTargets = []; lastMove = null; engineThinking = false;
   if (engine && engineReady) engine.postMessage('ucinewgame');

@@ -515,6 +515,12 @@
     transition:background .15s;
   }
   .btn-row button:hover{background:var(--button-hover);}
+  .btn-row .resign-button{color:var(--danger);}
+  .btn-row button:disabled{
+    opacity:.4;
+    cursor:default;
+  }
+  .btn-row button:disabled:hover{background:transparent;}
   .moves{
     margin-top:16px;
     border-top:1px solid var(--soft-line);
