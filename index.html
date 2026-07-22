@@ -87,6 +87,7 @@
             <option value="california">California</option>
             <option value="maestro">Maestro</option>
             <option value="shinigami">사신의 노트</option>
+            <option value="deathnote-preview">데스노트 캐릭터 시안</option>
           </select>
         </div>
 
@@ -288,6 +289,14 @@ function makeLichessPieceTheme(label, setName){
   };
 }
 
+function makeDeathNotePreviewTheme(){
+  return {
+    ...makeLichessPieceTheme('데스노트 캐릭터 시안', 'cburnett'),
+    wk:'assets/pieces/deathnote-preview/l.png',
+    bk:'assets/pieces/deathnote-preview/light.png'
+  };
+}
+
 const PIECE_THEMES = {
   wikimedia: {
     label: '기본 SVG',
@@ -354,7 +363,8 @@ const PIECE_THEMES = {
   chessnut: makeLichessPieceTheme('Chessnut', 'chessnut'),
   california: makeLichessPieceTheme('California', 'california'),
   maestro: makeLichessPieceTheme('Maestro', 'maestro'),
-  shinigami: window.ShinigamiPieces?.createTheme?.() || null
+  shinigami: window.ShinigamiPieces?.createTheme?.() || null,
+  'deathnote-preview':makeDeathNotePreviewTheme()
 };
 let currentPieceTheme = 'wikimedia';
 let currentBoardTheme = 'wood';
@@ -462,6 +472,12 @@ function syncDifficultyUi(){
 function getPieceImage(pieceKey){
   const theme = PIECE_THEMES[currentPieceTheme] || PIECE_THEMES.wikimedia;
   return theme[pieceKey] || PIECE_THEMES.wikimedia[pieceKey];
+}
+
+function applyPieceImageStyle(img, pieceKey){
+  if (currentPieceTheme === 'deathnote-preview' && (pieceKey === 'wk' || pieceKey === 'bk')){
+    img.classList.add('character-piece');
+  }
 }
 
 function loadEngine(){
@@ -1638,6 +1654,7 @@ function animateMove(move){
     img.className = 'piece-fx';
     img.src = getPieceImage(item.pieceKey);
     img.alt = item.pieceKey;
+    applyPieceImageStyle(img, item.pieceKey);
     img.style.width = (fromRect.width * 0.85) + 'px';
     img.style.height = (fromRect.height * 0.85) + 'px';
     img.style.left = (fromRect.left - layerRect.left + insetX) + 'px';
@@ -1762,6 +1779,7 @@ function render(){
         const img = document.createElement('img');
         img.src = getPieceImage(piece.color + piece.type);
         img.alt = piece.color + piece.type;
+        applyPieceImageStyle(img, piece.color + piece.type);
         img.style.width = '85%';
         img.style.height = '85%';
         img.style.pointerEvents = 'none';
@@ -1776,6 +1794,7 @@ function render(){
             hintImg.src = getPieceImage(hintMove.pieceKey);
             hintImg.alt = hintMove.pieceKey;
             hintImg.className = 'hint-piece';
+            applyPieceImageStyle(hintImg, hintMove.pieceKey);
             sqDiv.appendChild(hintImg);
           }
         }

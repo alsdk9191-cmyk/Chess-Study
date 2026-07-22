@@ -216,6 +216,14 @@
     object-fit:contain;
     filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));
   }
+  .sq img.character-piece,
+  .piece-fx.character-piece{
+    width:96% !important;
+    height:96% !important;
+    object-position:center bottom;
+    mix-blend-mode:multiply;
+    filter:contrast(1.06) saturate(.95) drop-shadow(0 2px 2px rgba(0,0,0,.24));
+  }
   .sq.selected::after{
     content:"";position:absolute;inset:0;background:var(--board-lastmove);
   }
