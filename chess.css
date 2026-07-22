@@ -216,14 +216,18 @@
     object-fit:contain;
     filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));
   }
-  .sq img.character-piece,
-  .piece-fx.character-piece{
-    width:96% !important;
-    height:96% !important;
+  .sq img.character-piece{
+    position:absolute;
+    left:50%;
+    bottom:0;
+    width:122% !important;
+    height:122% !important;
+    max-width:none;
+    transform:translateX(-50%);
     object-position:center bottom;
-    mix-blend-mode:multiply;
-    filter:contrast(1.06) saturate(.95) drop-shadow(0 2px 2px rgba(0,0,0,.24));
+    z-index:3;
   }
+  .piece-fx.character-piece{object-position:center bottom;}
   .sq.selected::after{
     content:"";position:absolute;inset:0;background:var(--board-lastmove);
   }

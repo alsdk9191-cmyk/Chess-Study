@@ -474,8 +474,12 @@ function getPieceImage(pieceKey){
   return theme[pieceKey] || PIECE_THEMES.wikimedia[pieceKey];
 }
 
+function isCharacterPiece(pieceKey){
+  return currentPieceTheme === 'deathnote-preview' && (pieceKey === 'wk' || pieceKey === 'bk');
+}
+
 function applyPieceImageStyle(img, pieceKey){
-  if (currentPieceTheme === 'deathnote-preview' && (pieceKey === 'wk' || pieceKey === 'bk')){
+  if (isCharacterPiece(pieceKey)){
     img.classList.add('character-piece');
   }
 }
@@ -1648,15 +1652,16 @@ function animateMove(move){
 
     const fromRect = fromSq.getBoundingClientRect();
     const toRect = toSq.getBoundingClientRect();
-    const insetX = fromRect.width * 0.075;
-    const insetY = fromRect.height * 0.075;
+    const pieceScale = isCharacterPiece(item.pieceKey) ? 1.22 : 0.85;
+    const insetX = fromRect.width * (1 - pieceScale) / 2;
+    const insetY = fromRect.height * (1 - pieceScale);
     const img = document.createElement('img');
     img.className = 'piece-fx';
     img.src = getPieceImage(item.pieceKey);
     img.alt = item.pieceKey;
     applyPieceImageStyle(img, item.pieceKey);
-    img.style.width = (fromRect.width * 0.85) + 'px';
-    img.style.height = (fromRect.height * 0.85) + 'px';
+    img.style.width = (fromRect.width * pieceScale) + 'px';
+    img.style.height = (fromRect.height * pieceScale) + 'px';
     img.style.left = (fromRect.left - layerRect.left + insetX) + 'px';
     img.style.top = (fromRect.top - layerRect.top + insetY) + 'px';
     pieceFxLayer.appendChild(img);
