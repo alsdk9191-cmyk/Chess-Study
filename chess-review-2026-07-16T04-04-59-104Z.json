@@ -1,0 +1,796 @@
+{
+  "schemaVersion": 1,
+  "app": "Chess Study",
+  "exportedAt": "2026-07-16T04:04:59.101Z",
+  "game": {
+    "result": "흑 승 (백 기권)",
+    "pgn": "1. e4 d5 2. exd5 Nf6 3. Nc3 Nxd5 4. Nxd5 Qxd5 5. Nf3 Nc6 6. d3 e5 7. Qe2 f6 8. Bd2 Bf5 9. c4 Qe6 10. Qe3 b6 11. Nh4 Bc5 12. Qf3 g6 13. Nxf5 gxf5 14. Qh5+ Qf7 15. Qxf5 O-O 16. Bh6 Rfd8 17. Qg4+ Kh8 18. Be2 Nb4 19. O-O Nxd3 20. Bxd3 Rxd3 21. b3 Rg8 22. Qf5 Rgd8 23. Rfe1 Bb4 24. Rxe5 fxe5 25. Qxf7 Rd1+",
+    "finalFen": "3r3k/p1p2Q1p/1p5B/4p3/1bP5/1P6/P4PPP/R2r2K1 w - - 1 26",
+    "moveCount": 50,
+    "playerColor": "w",
+    "playMode": "engine",
+    "skill": 6
+  },
+  "ai": {
+    "model": "gemini-3.1-flash-lite",
+    "coachStyle": "light",
+    "createdAt": "2026-07-16T04:04:08.255Z"
+  },
+  "review": {
+    "summary": "경기 내내 기물 교환 과정에서 상대의 전술적 의도를 파악하지 못해 수세에 몰렸고, 결국 스스로 승기를 저버리는 실수를 반복했군요. 형세를 안정시킬 기회가 있었음에도 매번 결정적인 곳에서 무리수를 두어 경기를 그르친 점이 아쉽습니다. (이 정도 판단력으로 체스를 한다고 말할 수 있는 건가? 그냥 장식용으로 앉아 있는 줄 알았어.)",
+    "strengths": [],
+    "weaknesses": [
+      "교환 상황에서 상대의 반격 수단인 템포와 전술적 위치를 읽지 못함.",
+      "주도권을 쥔 상황에서 체크나 기물 잡기에만 급급해 메이트 위협을 간과함.",
+      "수비적인 상황에서 킹의 안전보다 공격적인 수에 집착하여 기물을 불필요하게 헌납함."
+    ],
+    "goals": [
+      "상대의 기물이 이동했을 때 생기는 새로운 공격로를 먼저 점검해보세요.",
+      "기물 교환 전 반드시 상대가 반격할 수 있는 체크나 공격 기물을 먼저 계산하는 습관을 들이세요."
+    ],
+    "moments": [
+      {
+        "ply": 3,
+        "san": "exd5",
+        "title": "기물 교환",
+        "comment": "엔진의 최선 수를 두었습니다.",
+        "innerThought": "그나마 기본은 하는군."
+      },
+      {
+        "ply": 7,
+        "san": "Nxd5",
+        "title": "기물 손해",
+        "comment": "Qxd5 이후 기물 약 3점 손해를 보았습니다.",
+        "innerThought": "멍하니 기물 헌납하는 꼴이라니."
+      },
+      {
+        "ply": 13,
+        "san": "Qe2",
+        "title": "템포 공격 허용",
+        "comment": "a3 또는 Be2가 더 안전했습니다.",
+        "innerThought": "방어 개념이 아예 없나?"
+      },
+      {
+        "ply": 15,
+        "san": "Bd2",
+        "title": "기물 위치 조정",
+        "comment": "Qd1 또는 Qe4가 더 안전했습니다.",
+        "innerThought": "답답하군."
+      },
+      {
+        "ply": 23,
+        "san": "Qf3",
+        "title": "템포 공격 간과",
+        "comment": "Nxf5 또는 Qg3가 더 안전했습니다.",
+        "innerThought": "상대 움직임이 안 보이나?"
+      },
+      {
+        "ply": 25,
+        "san": "Nxf5",
+        "title": "최선의 교환",
+        "comment": "엔진의 최선 수를 두었습니다.",
+        "innerThought": "이 판단은 인정하지. (제법인데. 다음엔 더 깊게 봐야겠어."
+      },
+      {
+        "ply": 29,
+        "san": "Qxf5",
+        "title": "최선의 수",
+        "comment": "엔진의 최선 수를 두었습니다.",
+        "innerThought": "계산이 맞았군."
+      },
+      {
+        "ply": 31,
+        "san": "Bh6",
+        "title": "방어력 약화",
+        "comment": "Qh3 또는 O-O-O가 더 안전했습니다.",
+        "innerThought": "판단력이 또 무너지는군."
+      },
+      {
+        "ply": 33,
+        "san": "Qg4+",
+        "title": "부정확한 체크",
+        "comment": "O-O-O 또는 Bd2가 더 정확했습니다.",
+        "innerThought": "공격에만 눈이 멀었어."
+      },
+      {
+        "ply": 39,
+        "san": "Bxd3",
+        "title": "기물 손해",
+        "comment": "Rxd3 이후 기물 약 4점 손해를 보았습니다.",
+        "innerThought": "제 발로 무덤을 파는군."
+      },
+      {
+        "ply": 41,
+        "san": "b3",
+        "title": "방어 실수",
+        "comment": "Rfd1 또는 Rad1가 더 안전했습니다.",
+        "innerThought": "끝까지 형세를 망치려고 작정했나."
+      },
+      {
+        "ply": 47,
+        "san": "Rxe5",
+        "title": "블런더",
+        "comment": "Bc3 이후 룩 두 개를 동시에 노리는 상대의 전술을 간과했습니다.",
+        "innerThought": "눈을 뜨고 있는데 왜 보질 못해?"
+      },
+      {
+        "ply": 49,
+        "san": "Qxf7",
+        "title": "결정적 블런더",
+        "comment": "강제 메이트를 허용했습니다.",
+        "innerThought": "하, 스스로 길바닥에 판을 엎어버리는군. 볼 가치도 없어."
+      }
+    ]
+  },
+  "moves": [
+    {
+      "ply": 1,
+      "san": "e4",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -60,
+        "bestMove": "e4",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "e5 Nf3 Nc6 Nc3",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 3,
+      "san": "exd5",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -77,
+        "bestMove": "exd5",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "c6 d4 cxd5 Nf3",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "기물 교환",
+        "comment": "엔진의 최선 수를 두었습니다.",
+        "innerThought": "그나마 기본은 하는군."
+      }
+    },
+    {
+      "ply": 5,
+      "san": "Nc3",
+      "color": "w",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -54,
+        "rawDeltaCp": -54,
+        "bestMove": "Nf3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Nf3 또는 d4가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Nxd5 Nf3 Bf5 Be2",
+        "alternative": "Nf3 또는 d4",
+        "rule": "opening-noise-softener",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 7,
+      "san": "Nxd5",
+      "color": "w",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -107,
+        "rawDeltaCp": -107,
+        "bestMove": "Nf3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Qxd5 이후 기물 약 3점 손해입니다.",
+          "체크, 잡기, 공격 순으로 확인하세요."
+        ],
+        "expected": "Qxd5 Nf3 e5 d4",
+        "alternative": "Nf3 또는 d4",
+        "rule": "verified-piece-loss",
+        "materialLoss": 3,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "기물 손해",
+        "comment": "Qxd5 이후 기물 약 3점 손해를 보았습니다.",
+        "innerThought": "멍하니 기물 헌납하는 꼴이라니."
+      }
+    },
+    {
+      "ply": 9,
+      "san": "Nf3",
+      "color": "w",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -48,
+        "rawDeltaCp": -48,
+        "bestMove": "Ne2",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Ne2 또는 Qf3가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Bf5 Be2 e5 c4",
+        "alternative": "Ne2 또는 Qf3",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 11,
+      "san": "d3",
+      "color": "w",
+      "stockfish": {
+        "classification": "좋은 수",
+        "deltaCp": -22,
+        "rawDeltaCp": -73,
+        "bestMove": "d4",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": 3,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Bf5 Be2 e5 O-O",
+        "alternative": "d4 또는 c3",
+        "rule": "candidate-gap",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 13,
+      "san": "Qe2",
+      "color": "w",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -196,
+        "rawDeltaCp": -196,
+        "bestMove": "a3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "a3 또는 Be2가 더 안전했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Bg4 c3 O-O-O Qe4",
+        "alternative": "a3 또는 Be2",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "템포 공격 허용",
+        "comment": "a3 또는 Be2가 더 안전했습니다.",
+        "innerThought": "방어 개념이 아예 없나?"
+      }
+    },
+    {
+      "ply": 15,
+      "san": "Bd2",
+      "color": "w",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -125,
+        "rawDeltaCp": -125,
+        "bestMove": "Qd1",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Qd1 또는 Qe4가 더 안전했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Bf5 Nh4 Be6 Qe4",
+        "alternative": "Qd1 또는 Qe4",
+        "rule": "opening-noise-softener",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "기물 위치 조정",
+        "comment": "Qd1 또는 Qe4가 더 안전했습니다.",
+        "innerThought": "답답하군."
+      }
+    },
+    {
+      "ply": 17,
+      "san": "c4",
+      "color": "w",
+      "stockfish": {
+        "classification": "정확한 수",
+        "deltaCp": -13,
+        "rawDeltaCp": -82,
+        "bestMove": "a3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": 2,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "큰 전술 변화는 없습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Qe6 a3 O-O-O Qe3",
+        "alternative": "a3 또는 Be3",
+        "rule": "candidate-gap",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 19,
+      "san": "Qe3",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -43,
+        "bestMove": "Qe3",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "O-O-O Be2 Bb4 Bxb4",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 21,
+      "san": "Nh4",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -61,
+        "bestMove": "Nh4",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "Bc5 Nxf5 Qxf5 g4",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 23,
+      "san": "Qf3",
+      "color": "w",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -130,
+        "rawDeltaCp": -130,
+        "bestMove": "Nxf5",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Nxf5 또는 Qg3가 더 안전했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Bg4 Qd5 Nb4 Qxe6+",
+        "alternative": "Nxf5 또는 Qg3",
+        "rule": "engine-delta",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "템포 공격 간과",
+        "comment": "Nxf5 또는 Qg3가 더 안전했습니다.",
+        "innerThought": "상대 움직임이 안 보이나?"
+      }
+    },
+    {
+      "ply": 25,
+      "san": "Nxf5",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -103,
+        "bestMove": "Nxf5",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "gxf5 b4 Bd4 Rd1",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 2,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "최선의 교환",
+        "comment": "엔진의 최선 수를 두었습니다.",
+        "innerThought": "이 판단은 인정하지. (제법인데. 다음엔 더 깊게 봐야겠어."
+      }
+    },
+    {
+      "ply": 27,
+      "san": "Qh5+",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -73,
+        "bestMove": "Qh5+",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "Ke7 O-O-O b5 f4",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 29,
+      "san": "Qxf5",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -90,
+        "bestMove": "Qxf5",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "Nd4 Qe4 O-O-O O-O-O",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "최선의 수",
+        "comment": "엔진의 최선 수를 두었습니다.",
+        "innerThought": "계산이 맞았군."
+      }
+    },
+    {
+      "ply": 31,
+      "san": "Bh6",
+      "color": "w",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -166,
+        "rawDeltaCp": -166,
+        "bestMove": "Qh3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Qh3 또는 O-O-O가 더 안전했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Bb4+ Kd1 Rfd8 Be2",
+        "alternative": "Qh3 또는 O-O-O",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "방어력 약화",
+        "comment": "Qh3 또는 O-O-O가 더 안전했습니다.",
+        "innerThought": "판단력이 또 무너지는군."
+      }
+    },
+    {
+      "ply": 33,
+      "san": "Qg4+",
+      "color": "w",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -84,
+        "rawDeltaCp": -84,
+        "bestMove": "O-O-O",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": 3,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "O-O-O 또는 Bd2가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Kh8 O-O-O b5 Be2",
+        "alternative": "O-O-O 또는 Bd2",
+        "rule": "candidate-gap",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "부정확한 체크",
+        "comment": "O-O-O 또는 Bd2가 더 정확했습니다.",
+        "innerThought": "공격에만 눈이 멀었어."
+      }
+    },
+    {
+      "ply": 35,
+      "san": "Be2",
+      "color": "w",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -80,
+        "rawDeltaCp": -80,
+        "bestMove": "Bd2",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Bd2 또는 O-O-O가 더 정확했습니다.",
+          "이동 뒤 남는 기물의 방어를 확인하세요."
+        ],
+        "expected": "Nd4 Bd1 Rg8 Qh3",
+        "alternative": "Bd2 또는 O-O-O",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 37,
+      "san": "O-O",
+      "color": "w",
+      "stockfish": {
+        "classification": "최선",
+        "deltaCp": 0,
+        "rawDeltaCp": -77,
+        "bestMove": "O-O",
+        "followedHint": false,
+        "matchedEngineBest": true,
+        "candidateRank": 1,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "엔진의 최선 수를 두었습니다."
+        ],
+        "expected": "Qg6 Qxg6 hxg6 d4",
+        "alternative": "",
+        "rule": "matched-engine-best",
+        "materialLoss": 1,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 39,
+      "san": "Bxd3",
+      "color": "w",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -98,
+        "rawDeltaCp": -98,
+        "bestMove": "b3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Rxd3 이후 기물 약 4점 손해입니다.",
+          "체크, 잡기, 공격 순으로 확인하세요."
+        ],
+        "expected": "Rxd3 Be3 Bxe3 fxe3",
+        "alternative": "b3 또는 Rab1",
+        "rule": "verified-piece-loss",
+        "materialLoss": 4,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "기물 손해",
+        "comment": "Rxd3 이후 기물 약 4점 손해를 보았습니다.",
+        "innerThought": "제 발로 무덤을 파는군."
+      }
+    },
+    {
+      "ply": 41,
+      "san": "b3",
+      "color": "w",
+      "stockfish": {
+        "classification": "실수",
+        "deltaCp": -135,
+        "rawDeltaCp": -135,
+        "bestMove": "Rfd1",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Rfd1 또는 Rad1가 더 안전했습니다.",
+          "폰 전진 뒤 열린 대각선을 확인하세요."
+        ],
+        "expected": "Qg6 Qxg6 hxg6 h4",
+        "alternative": "Rfd1 또는 Rad1",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "방어 실수",
+        "comment": "Rfd1 또는 Rad1가 더 안전했습니다.",
+        "innerThought": "끝까지 형세를 망치려고 작정했나."
+      }
+    },
+    {
+      "ply": 43,
+      "san": "Qf5",
+      "color": "w",
+      "stockfish": {
+        "classification": "무난한 수",
+        "deltaCp": -53,
+        "rawDeltaCp": -76,
+        "bestMove": "Qe2",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": 2,
+        "comparisonSource": "same-search-multipv",
+        "reasons": [
+          "Qe2 또는 Qe4가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qg6 Qxg6 hxg6 h4",
+        "alternative": "Qe2 또는 Qe4",
+        "rule": "candidate-gap",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 45,
+      "san": "Rfe1",
+      "color": "w",
+      "stockfish": {
+        "classification": "부정확",
+        "deltaCp": -67,
+        "rawDeltaCp": -67,
+        "bestMove": "Be3",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Be3 또는 Bg5가 더 정확했습니다.",
+          "상대의 템포 공격을 확인하세요."
+        ],
+        "expected": "Qg6 Qxg6 hxg6 h4",
+        "alternative": "Be3 또는 Bg5",
+        "rule": "engine-delta",
+        "materialLoss": 0,
+        "mateAgainstMover": false
+      },
+      "aiComment": null
+    },
+    {
+      "ply": 47,
+      "san": "Rxe5",
+      "color": "w",
+      "stockfish": {
+        "classification": "블런더",
+        "deltaCp": -581,
+        "rawDeltaCp": -581,
+        "bestMove": "Rec1",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "Bc3 뒤 e5의 룩와 a1의 룩를 동시에 노리며 실제 기물 이득이 남습니다.",
+          "체크, 잡기, 공격 순으로 확인하세요."
+        ],
+        "expected": "Bc3 g3 Bxe5 Rb1",
+        "alternative": "Rec1 또는 Rf1",
+        "rule": "verified-major-material-loss",
+        "materialLoss": 5,
+        "mateAgainstMover": false
+      },
+      "aiComment": {
+        "title": "블런더",
+        "comment": "Bc3 이후 룩 두 개를 동시에 노리는 상대의 전술을 간과했습니다.",
+        "innerThought": "눈을 뜨고 있는데 왜 보질 못해?"
+      }
+    },
+    {
+      "ply": 49,
+      "san": "Qxf7",
+      "color": "w",
+      "stockfish": {
+        "classification": "블런더",
+        "deltaCp": -99294,
+        "rawDeltaCp": -99294,
+        "bestMove": "Qxe5+",
+        "followedHint": false,
+        "matchedEngineBest": false,
+        "candidateRank": null,
+        "comparisonSource": "before-after-fallback",
+        "reasons": [
+          "강제 메이트를 허용했습니다.",
+          "상대의 체크부터 확인하세요."
+        ],
+        "expected": "Rd1+ Rxd1 Rxd1#",
+        "alternative": "Qxe5+ 또는 g4",
+        "rule": "forced-mate",
+        "materialLoss": 0,
+        "mateAgainstMover": true
+      },
+      "aiComment": {
+        "title": "결정적 블런더",
+        "comment": "강제 메이트를 허용했습니다.",
+        "innerThought": "하, 스스로 길바닥에 판을 엎어버리는군. 볼 가치도 없어."
+      }
+    }
+  ]
+}

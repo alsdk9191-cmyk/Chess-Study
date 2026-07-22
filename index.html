@@ -10,6 +10,7 @@
 <script src="ai-coach-config.js"></script>
 <script src="ai-game-review.js"></script>
 <script src="chess-analysis.js"></script>
+<script src="shinigami-pieces.js"></script>
 <link rel="stylesheet" href="chess.css">
 </head>
 <body>
@@ -85,6 +86,7 @@
             <option value="chessnut">Chessnut</option>
             <option value="california">California</option>
             <option value="maestro">Maestro</option>
+            <option value="shinigami">사신의 노트</option>
           </select>
         </div>
 
@@ -351,7 +353,8 @@ const PIECE_THEMES = {
   cardinal: makeLichessPieceTheme('Cardinal', 'cardinal'),
   chessnut: makeLichessPieceTheme('Chessnut', 'chessnut'),
   california: makeLichessPieceTheme('California', 'california'),
-  maestro: makeLichessPieceTheme('Maestro', 'maestro')
+  maestro: makeLichessPieceTheme('Maestro', 'maestro'),
+  shinigami: window.ShinigamiPieces?.createTheme?.() || null
 };
 let currentPieceTheme = 'wikimedia';
 let currentBoardTheme = 'wood';
